@@ -128,6 +128,7 @@ select:disabled{opacity:.5}
 <div class="modal" id="profM"><div class="mbox">
   <h3 id="pmH">Profile</h3>
   <div style="display:flex;align-items:center;gap:14px"><span id="pPrev"></span><label for="pFile" class="link" id="pPhotoBtn" style="margin:0">Change photo</label><input type="file" id="pFile" accept="image/*" hidden><button class="link" id="pNoPhoto">Remove photo</button></div>
+  <a id="pEmail" style="display:block;margin-top:10px;font-size:13px;color:var(--accent);text-decoration:none"></a>
   <div class="two">
     <div><label>Name</label><input id="pName"></div>
     <div><label>Initials</label><input id="pIni" maxlength="3" placeholder="Auto"></div>
@@ -520,6 +521,7 @@ function openProf(id){
   $('pmH').textContent = mine ? 'Your profile' : 'Profile';
   $('pName').value=p.name; $('pRole').value=p.role; $('pTeam').value=p.team||'';
   $('pIni').value = p.initials || '';
+  $('pEmail').textContent = p.email || ''; $('pEmail').href = p.email ? 'mailto:' + p.email : '#';
   document.querySelectorAll('#pJobs input').forEach(c => { c.checked = (p.jobs||[]).includes(c.value); c.disabled = !canEdit; });
   $('pJobsWrap').hidden = p.role !== 'member';
   $('pName').disabled = $('pIni').disabled = !canEdit;
