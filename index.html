@@ -129,7 +129,7 @@ select:disabled{opacity:.5}
 </div></div>
 
 <div class="modal" id="galM"><div class="mbox">
-  <h3>Add to gallery</h3>
+  <h3 id="gH">Add to gallery</h3>
   <label>Title (optional)</label><input id="gTitle">
   <label>Upload images</label><input type="file" id="gFile" accept="image/*" multiple style="border:0">
   <label>…or paste a Google Drive link</label><input id="gLink" placeholder="https://drive.google.com/...">
@@ -148,6 +148,7 @@ const N = { fusion:'Sigma E Fusion', flux:'Sigma E Flux' };
 const SUB = { fusion:'FTC #38620', flux:'FTC #38621' };
 const ROLE = { admin:'Admin', leader:'Leader', member:'Member' };
 
+let galTeam = null;
 let images = [], newColor = null, dropPhoto = false;
 let profiles = [], tasks = [], me = null, view = 'fusion', calOff = 0;
 let eT = null, eP = null, sel = [], newPhoto = null, signUp = false;
@@ -289,18 +290,25 @@ function gallery(){
     const inner = folder ? '📁<br>Drive folder' : id ? `<img src="https://drive.google.com/thumbnail?id=${id}&sz=w600" loading="lazy">` : i.kind==='drive' ? 'Drive link' : `<img src="${esc(i.url)}" loading="lazy">`;
     return `<div class="gi" data-open="${esc(i.url)}">${inner}${i.title?`<div class="cap">${esc(i.title)}</div>`:''}${can?`<span class="x" data-delimg="${i.id}">✕</span>`:''}</div>`;
   };
-  return head('Gallery', images.length + ' items', `<button class="add" data-addimg="1">+ Add</button>`)
-    + (images.length ? `<div class="gal">${images.map(item).join('')}</div>` : '<div class="empty">No images yet.</div>');
+  const teams = myTeams();
+  if (!teams.length) return head('Gallery') + '<div class="empty">An admin needs to add you to a team first.</div>';
+  if (!teams.includes(galTeam)) galTeam = teams[0];
+  const list = images.filter(i => i.team === galTeam);
+  const switcher = teams.length > 1 ? `<div style="display:flex;gap:18px;margin:-12px 0 20px">${teams.map(t =>
+    `<button class="add" data-galteam="${t}" style="color:${t===galTeam?C[t]:'var(--mut)'};font-weight:${t===galTeam?600:400}">${N[t].replace('Sigma E ','')}</button>`).join('')}</div>` : '';
+  return head(`<span class="dot" style="display:inline-block;width:10px;height:10px;background:${C[galTeam]}"></span> ${N[galTeam].replace('Sigma E ','')} Gallery`, list.length + ' items', `<button class="add" data-addimg="1">+ Add</button>`)
+    + switcher + (list.length ? `<div class="gal">${list.map(item).join('')}</div>` : '<div class="empty">No images yet.</div>');
 }
 
 // ===== Clicks =====
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
+  const el = e.target.closest('[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
   if (!el) return;
   if (el.dataset.close) return hide(el.dataset.close);
+  if (el.dataset.galteam) { galTeam = el.dataset.galteam; return render(); }
   if (el.dataset.delimg) { e.stopPropagation(); return delImage(+el.dataset.delimg); }
   if (el.dataset.open) return window.open(el.dataset.open, '_blank', 'noopener');
-  if (el.dataset.addimg) { $('gTitle').value=''; $('gFile').value=''; $('gLink').value=''; return show('galM'); }
+  if (el.dataset.addimg) { $('gTitle').value=''; $('gFile').value=''; $('gLink').value=''; $('gH').textContent = `Add to ${N[galTeam].replace('Sigma E ','')} gallery`; return show('galM'); }
   if (el.classList.contains('tab')) { view = el.dataset.v; history.replaceState(null, '', '#' + view); return render(); }
   if (el.dataset.cal) { calOff = el.dataset.cal==='0' ? 0 : calOff + +el.dataset.cal; return render(); }
   if (el.dataset.new) return openTask(null, el.dataset.new);
@@ -365,11 +373,11 @@ $('gSave').onclick = async () => {
     const path = `${me.id}/${Date.now()}-${f.name.replace(/[^\w.]/g,'')}`;
     const up = await sb.storage.from('gallery').upload(path, f);
     if (up.error) { toast(up.error.message); continue; }
-    rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload' });
+    rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam });
   }
   if (link) {
     if (!/^https:\/\/(drive|docs)\.google\.com\//.test(link)) toast('That is not a Google Drive link');
-    else rows.push({ url: link, title, kind:'drive' });
+    else rows.push({ url: link, title, kind:'drive', team: galTeam });
   }
   if (rows.length) { const { error } = await sb.from('images').insert(rows); if (error) toast(error.message); }
   $('gSave').disabled = false; $('gSave').textContent = 'Add';
