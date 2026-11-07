@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sigma E</title>
+<style>
+:root{--accent:#2b8fd6;--fusion:#f59e2b;--flux:#2b8fd6;
+ --bg:#ffffff;--text:#1a1a1a;--mut:#8a8f98;--line:#eeeeee;--hover:#f7f7f7;--card:#ffffff}
+[data-theme=dark]{--bg:#141414;--text:#ececec;--mut:#7d828a;--line:#262626;--hover:#1c1c1c;--card:#1b1b1b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+nav{display:flex;align-items:center;gap:22px;padding:0 32px;height:56px;border-bottom:1px solid var(--line);overflow-x:auto}
+.logo{font-weight:700;margin-right:12px;white-space:nowrap}.logo span{color:var(--accent)}
+.tab{color:var(--mut);cursor:pointer;height:56px;display:flex;align-items:center;border-bottom:1.5px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--text)}.tab.on{color:var(--text);border-color:var(--text)}
+.right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.icon{cursor:pointer;color:var(--mut);font-size:17px}.icon:hover{color:var(--text)}
+main{max-width:760px;margin:0 auto;padding:44px 24px 80px}
+.head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px}
+h1{font-size:22px;font-weight:600}.sub{color:var(--mut);font-size:13px;margin-top:4px}
+.add{color:var(--mut);cursor:pointer;background:none;border:0;font:inherit}.add:hover{color:var(--text)}
+h2{font-size:12px;font-weight:500;color:var(--mut);margin:28px 0 6px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.row:hover{background:var(--hover)}.row.static{cursor:default}.row.static:hover{background:none}
+.box{width:16px;height:16px;border:1.5px solid var(--mut);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--bg)}
+.box.done{background:var(--text);border-color:var(--text)}
+.box.doing{border-color:var(--accent);background:linear-gradient(var(--accent),var(--accent)) center/6px 6px no-repeat}
+.box.locked{opacity:.4;cursor:default}
+.t{flex:1}.done-t{color:var(--mut);text-decoration:line-through}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.date{color:var(--mut);font-size:13px;width:56px;text-align:right}.late{color:#e5484d}
+.role{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:1px 8px}
+.av{border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;flex-shrink:0;border:1.5px solid var(--bg)}
+.stack{display:inline-flex}.stack .av+.av{margin-left:-6px}
+.bar{flex:1;height:3px;background:var(--line);border-radius:3px}.bar div{height:100%;background:var(--text);border-radius:3px}
+.empty{color:var(--mut);padding:10px 0}
+.cal{display:grid;grid-template-columns:repeat(7,1fr)}
+.cal .h{font-size:11px;color:var(--mut);padding:6px 4px}
+.cal .d{min-height:78px;padding:4px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
+.cal .d.o{opacity:.35}.cal .d.today>span{color:var(--accent);font-weight:600}
+.ev{color:var(--text);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;display:flex;align-items:center;gap:4px}
+.modal{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9}.modal.show{display:flex}
+.mbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:400px;max-width:92vw}
+.mbox h3{font-size:16px;font-weight:600;margin-bottom:16px}
+label{display:block;font-size:12px;color:var(--mut);margin:14px 0 6px}
+input,select{width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text);padding:6px 0;font:inherit;outline:0}
+input:focus,select:focus{border-color:var(--text)}select option{background:var(--card)}
+select:disabled{opacity:.5}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.people{display:flex;flex-wrap:wrap;gap:8px}.person{opacity:.35;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px}.person.on{opacity:1}
+.acts{display:flex;justify-content:flex-end;gap:16px;margin-top:24px;align-items:center}
+.btn{background:var(--text);color:var(--bg);border:0;padding:8px 16px;border-radius:6px;font:inherit;cursor:pointer}
+.link{background:none;border:0;color:var(--mut);font:inherit;cursor:pointer}.link:hover{color:var(--text)}.del{margin-right:auto;color:#e5484d}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg div{flex:1;text-align:center;padding:8px;cursor:pointer;color:var(--mut)}.seg .on{background:var(--hover);color:var(--text)}
+#auth{max-width:320px;margin:14vh auto;padding:0 24px}
+#auth h1{margin-bottom:6px}.err{color:#e5484d;font-size:13px;margin-top:12px;min-height:18px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px;display:none}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="auth" hidden>
+  <h1>Sigma <span style="color:var(--accent)">E</span></h1>
+  <div class="sub" id="authSub">Sign in to continue</div>
+  <div id="nameWrap" hidden><label>Name</label><input id="aName"></div>
+  <label>Email</label><input id="aEmail" type="email">
+  <label>Password</label><input id="aPass" type="password">
+  <div class="acts" style="justify-content:space-between"><button class="link" id="aSwitch">Create account</button><button class="btn" id="aGo">Sign in</button></div>
+  <div class="err" id="aErr"></div>
+</div>
+
+<!-- App -->
+<div id="appWrap" hidden>
+<nav>
+  <div class="logo">Sigma <span>E</span></div>
+  <div class="tab" data-v="fusion">Fusion</div>
+  <div class="tab" data-v="flux">Flux</div>
+  <div class="tab" data-v="calendar">Calendar</div>
+  <div class="tab" data-v="progress">Progress</div>
+  <div class="tab" data-v="team">Team</div>
+  <div class="right"><span class="icon" id="gear" title="Settings">⚙</span><span id="meBtn" style="cursor:pointer"></span></div>
+</nav>
+<main id="app"></main>
+</div>
+
+<div class="modal" id="taskM"><div class="mbox">
+  <h3 id="tmH">New task</h3>
+  <label>Title</label><input id="tTitle" placeholder="What needs doing?">
+  <div class="two">
+    <div><label>Team</label><select id="tTeam"><option value="fusion">Fusion</option><option value="flux">Flux</option></select></div>
+    <div><label>Due</label><input type="date" id="tDue"></div>
+  </div>
+  <label>Status</label><select id="tStat"><option value="todo">To do</option><option value="doing">In progress</option><option value="done">Done</option></select>
+  <label>Assign</label><div class="people" id="tPeople"></div>
+  <div class="acts"><button class="link del" id="tDel">Delete</button><button class="link" data-close="taskM">Cancel</button><button class="btn" id="tSave">Save</button></div>
+</div></div>
+
+<div class="modal" id="profM"><div class="mbox">
+  <h3 id="pmH">Profile</h3>
+  <div style="display:flex;align-items:center;gap:14px"><span id="pPrev"></span><label for="pFile" class="link" id="pPhotoBtn" style="margin:0">Change photo</label><input type="file" id="pFile" accept="image/*" hidden></div>
+  <label>Name</label><input id="pName">
+  <div class="two">
+    <div><label>Role</label><select id="pRole"><option value="member">Member</option><option value="leader">Leader</option><option value="admin">Admin</option></select></div>
+    <div><label>Team</label><select id="pTeam"><option value="">None</option><option value="fusion">Fusion</option><option value="flux">Flux</option></select></div>
+  </div>
+  <div class="acts"><button class="link del" id="pDel">Remove</button><button class="link" data-close="profM">Cancel</button><button class="btn" id="pSave">Save</button></div>
+</div></div>
+
+<div class="modal" id="setM"><div class="mbox">
+  <h3>Settings</h3>
+  <label>Appearance</label>
+  <div class="seg" id="themeSeg"><div data-t="light">Light</div><div data-t="dark">Dark</div></div>
+  <div class="acts"><button class="link del" id="logout">Sign out</button><button class="btn" data-close="setM">Done</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const C = { fusion:'var(--fusion)', flux:'var(--flux)' };
+const N = { fusion:'Sigma E Fusion', flux:'Sigma E Flux' };
+const SUB = { fusion:'FTC #38620', flux:'FTC #38621' };
+const ROLE = { admin:'Admin', leader:'Leader', member:'Member' };
+
+let profiles = [], tasks = [], me = null, view = 'fusion', calOff = 0;
+let eT = null, eP = null, sel = [], newPhoto = null, signUp = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P = id => profiles.find(p => p.id === id);
+const ini = n => (n||'?').split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase();
+const hue = id => [...id].reduce((a,c) => a + c.charCodeAt(0), 0) * 47 % 360;
+const av = (p, s=22) => !p ? '' : p.avatar_url
+  ? `<img class="av" src="${esc(p.avatar_url)}" style="width:${s}px;height:${s}px" title="${esc(p.name)}">`
+  : `<span class="av" style="width:${s}px;height:${s}px;font-size:${s*.4}px;background:hsl(${hue(p.id)} 45% 62%)" title="${esc(p.name)}">${esc(ini(p.name))}</span>`;
+const stack = ids => `<span class="stack">${ids.map(i => av(P(i))).join('')}</span>`;
+const pct = l => l.length ? Math.round(l.filter(t => t.status==='done').length / l.length * 100) : 0;
+const today = () => new Date().toLocaleDateString('en-CA');
+const fmt = s => s ? new Date(s+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+const toast = m => { const t=$('toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',2500); };
+const show = id => $(id).classList.add('show'), hide = id => $(id).classList.remove('show');
+
+// Permissions
+const isAdmin = () => me?.role === 'admin';
+const canManage = team => isAdmin() || (me?.role === 'leader' && me.team === team);
+const canTick = t => canManage(t.team) || t.assignees.includes(me?.id);
+
+// ===== Theme =====
+function setTheme(t){ document.documentElement.dataset.theme=t; try{localStorage.setItem('theme',t)}catch(e){}
+  document.querySelectorAll('#themeSeg div').forEach(x => x.classList.toggle('on', x.dataset.t===t)); }
+let th='light'; try{ th=localStorage.getItem('theme')||'light' }catch(e){} setTheme(th);
+document.querySelectorAll('#themeSeg div').forEach(x => x.onclick = () => setTheme(x.dataset.t));
+
+// ===== Auth =====
+$('aSwitch').onclick = () => { signUp=!signUp; $('nameWrap').hidden=!signUp;
+  $('aGo').textContent = signUp?'Create account':'Sign in'; $('aSwitch').textContent = signUp?'I have an account':'Create account';
+  $('authSub').textContent = signUp?'Create your account':'Sign in to continue'; $('aErr').textContent=''; };
+$('aGo').onclick = async () => {
+  const email=$('aEmail').value.trim(), password=$('aPass').value; $('aErr').textContent='';
+  const { data, error } = signUp
+    ? await sb.auth.signUp({ email, password, options:{ data:{ name:$('aName').value.trim() } } })
+    : await sb.auth.signInWithPassword({ email, password });
+  if (error) return $('aErr').textContent = error.message;
+  if (signUp && !data.session) $('aErr').textContent = 'Check your email to confirm, then sign in.';
+};
+$('logout').onclick = async () => { hide('setM'); await sb.auth.signOut(); };
+
+sb.auth.onAuthStateChange((_e, session) => session ? start(session.user) : showAuth());
+function showAuth(){ $('appWrap').hidden=true; $('auth').hidden=false; }
+
+async function start(user){
+  $('auth').hidden=true; $('appWrap').hidden=false;
+  await load(); me = P(user.id);
+  if (!me) { toast('Profile not found. Did you run schema.sql?'); return; }
+  if (me.team) view = me.team;
+  render();
+}
+async function load(){
+  const [p, t] = await Promise.all([
+    sb.from('profiles').select('*').order('name'),
+    sb.from('tasks').select('*').order('due', { nullsFirst:false })
+  ]);
+  if (p.error || t.error) toast((p.error||t.error).message);
+  profiles = p.data || []; tasks = t.data || [];
+  if (me) me = P(me.id);
+}
+
+// ===== Views =====
+function render(){
+  document.querySelectorAll('.tab').forEach(n => n.classList.toggle('on', n.dataset.v===view));
+  $('meBtn').innerHTML = av(me, 28);
+  $('app').innerHTML = view==='calendar' ? calendar() : view==='progress' ? progress() : view==='team' ? team() : project(view);
+}
+const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btn}</div>`;
+
+function row(t){
+  const late = t.status!=='done' && t.due && t.due < today();
+  return `<div class="row" data-task="${t.id}">
+    <span class="box ${t.status} ${canTick(t)?'':'locked'}" data-tick="${t.id}">${t.status==='done'?'✓':''}</span>
+    <span class="t ${t.status==='done'?'done-t':''}">${esc(t.title)}</span>
+    ${stack(t.assignees)}<span class="date ${late?'late':''}">${fmt(t.due)}</span></div>`;
+}
+function project(team){
+  const all = tasks.filter(t => t.team===team);
+  const g = (s,l) => { const L=all.filter(t=>t.status===s); return L.length ? `<h2>${l}</h2>${L.map(row).join('')}` : ''; };
+  const body = g('doing','In progress') + g('todo','To do') + g('done','Done');
+  return head(N[team], SUB[team], canManage(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
+    + (body || '<div class="empty">No tasks yet.</div>');
+}
+function calendar(){
+  const now=new Date(), b=new Date(now.getFullYear(), now.getMonth()+calOff, 1), s=new Date(b); s.setDate(1-((b.getDay()+6)%7));
+  let c='';
+  for (let i=0;i<42;i++){ const x=new Date(s); x.setDate(s.getDate()+i); const k=x.toLocaleDateString('en-CA');
+    c += `<div class="d ${x.getMonth()!==b.getMonth()?'o':''} ${k===today()?'today':''}"><span>${x.getDate()}</span>${
+      tasks.filter(t=>t.due===k).map(t=>`<div class="ev" data-task="${t.id}"><span class="dot" style="background:${C[t.team]}"></span>${esc(t.title)}</div>`).join('')}</div>`; }
+  return head(b.toLocaleDateString('en-GB',{month:'long',year:'numeric'}), '',
+    `<div style="display:flex;gap:14px"><button class="add" data-cal="-1">←</button><button class="add" data-cal="0">Today</button><button class="add" data-cal="1">→</button></div>`)
+    + `<div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>`;
+}
+function progress(){
+  const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:150px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span class="date">${pct(l)}%</span></div>`;
+  return head('Progress') + ['fusion','flux'].map(team => {
+    const tt = tasks.filter(t => t.team===team);
+    return `<h2>${N[team]}</h2>` + bar(`<span class="dot" style="background:${C[team]}"></span>`, '<b>Team</b>', tt)
+      + profiles.filter(p => p.team===team).map(p => bar(av(p), esc(p.name), tt.filter(t => t.assignees.includes(p.id)))).join('');
+  }).join('');
+}
+function team(){
+  const grp = (label, list) => list.length ? `<h2>${label}</h2>` + list.map(p => `<div class="row" data-prof="${p.id}">${av(p,32)}
+    <span class="t">${esc(p.name)}${p.id===me.id?' <span style="color:var(--mut)">· you</span>':''}</span><span class="role">${ROLE[p.role]}</span></div>`).join('') : '';
+  const order = l => l.sort((a,b) => ['admin','leader','member'].indexOf(a.role) - ['admin','leader','member'].indexOf(b.role));
+  return head('Team', profiles.length + ' members')
+    + grp(N.fusion, order(profiles.filter(p=>p.team==='fusion')))
+    + grp(N.flux, order(profiles.filter(p=>p.team==='flux')))
+    + grp('No team yet', order(profiles.filter(p=>!p.team)));
+}
+
+// ===== Clicks =====
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
+  if (!el) return;
+  if (el.dataset.close) return hide(el.dataset.close);
+  if (el.classList.contains('tab')) { view = el.dataset.v; return render(); }
+  if (el.dataset.cal) { calOff = el.dataset.cal==='0' ? 0 : calOff + +el.dataset.cal; return render(); }
+  if (el.dataset.new) return openTask(null, el.dataset.new);
+  if (el.dataset.prof) return openProf(el.dataset.prof);
+  if (el.dataset.tick) {
+    const t = tasks.find(x => x.id == el.dataset.tick); if (!canTick(t)) return;
+    const status = { todo:'doing', doing:'done', done:'todo' }[t.status];
+    const { error } = await sb.from('tasks').update({ status }).eq('id', t.id);
+    if (error) return toast(error.message);
+    t.status = status; return render();
+  }
+  if (el.dataset.task) { const t = tasks.find(x => x.id == el.dataset.task); if (canManage(t.team)) openTask(t.id); }
+});
+$('gear').onclick = () => show('setM');
+$('meBtn').onclick = () => openProf(me.id);
+document.querySelectorAll('.modal').forEach(m => m.onclick = e => { if (e.target===m) hide(m.id); });
+
+// ===== Task modal =====
+function openTask(id, team){
+  eT=id; const t=tasks.find(x=>x.id===id);
+  $('tmH').textContent = t ? 'Edit task' : 'New task';
+  $('tTitle').value = t?.title || ''; $('tTeam').value = t?.team || team; $('tDue').value = t?.due || '';
+  $('tStat').value = t?.status || 'todo'; $('tTeam').disabled = !isAdmin();
+  sel = t ? [...t.assignees] : []; people(); $('tDel').style.visibility = t ? 'visible' : 'hidden';
+  show('taskM'); $('tTitle').focus();
+}
+function people(){
+  const team=$('tTeam').value;
+  $('tPeople').innerHTML = profiles.filter(p => p.team===team || sel.includes(p.id))
+    .map(p => `<span class="person ${sel.includes(p.id)?'on':''}" data-pick="${p.id}">${av(p)}${esc(p.name.split(' ')[0])}</span>`).join('')
+    || '<span class="empty">No one on this team yet</span>';
+}
+$('tTeam').onchange = people;
+$('tPeople').onclick = e => { const p=e.target.closest('[data-pick]'); if(!p) return; const id=p.dataset.pick;
+  sel = sel.includes(id) ? sel.filter(x=>x!==id) : [...sel, id]; people(); };
+$('tSave').onclick = async () => {
+  const title=$('tTitle').value.trim(); if(!title) return;
+  const o = { title, team:$('tTeam').value, due:$('tDue').value || null, status:$('tStat').value, assignees:sel };
+  const { error } = eT ? await sb.from('tasks').update(o).eq('id', eT) : await sb.from('tasks').insert(o);
+  if (error) return toast(error.message);
+  hide('taskM'); await load(); render();
+};
+$('tDel').onclick = async () => {
+  if (!confirm('Delete this task?')) return;
+  const { error } = await sb.from('tasks').delete().eq('id', eT);
+  if (error) return toast(error.message);
+  hide('taskM'); await load(); render();
+};
+
+// ===== Profile modal =====
+function openProf(id){
+  eP=id; const p=P(id); newPhoto=null; const mine = id===me.id;
+  $('pmH').textContent = mine ? 'Your profile' : 'Profile';
+  $('pName').value=p.name; $('pRole').value=p.role; $('pTeam').value=p.team||'';
+  $('pName').disabled = !(mine || isAdmin());
+  $('pRole').disabled = $('pTeam').disabled = !isAdmin();
+  $('pPhotoBtn').style.display = mine ? '' : 'none';
+  $('pSave').style.display = (mine || isAdmin()) ? '' : 'none';
+  $('pDel').style.visibility = isAdmin() && !mine ? 'visible' : 'hidden';
+  prev(); show('profM');
+}
+function prev(){ const p=P(eP); $('pPrev').innerHTML = av({ ...p, name:$('pName').value||p.name, avatar_url: newPhoto ? URL.createObjectURL(newPhoto) : p.avatar_url }, 56); }
+$('pName').oninput = prev;
+$('pFile').onchange = e => { newPhoto = e.target.files[0] || null; prev(); };
+$('pSave').onclick = async () => {
+  const o = { name:$('pName').value.trim() || 'Member' };
+  if (isAdmin()) { o.role=$('pRole').value; o.team=$('pTeam').value || null; }
+  if (newPhoto) {
+    const path = `${me.id}/${Date.now()}-${newPhoto.name.replace(/[^\w.]/g,'')}`;
+    const up = await sb.storage.from('avatars').upload(path, newPhoto, { upsert:true });
+    if (up.error) return toast(up.error.message);
+    o.avatar_url = sb.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+  }
+  const { error } = await sb.from('profiles').update(o).eq('id', eP);
+  if (error) return toast(error.message);
+  hide('profM'); await load(); render();
+};
+$('pDel').onclick = async () => {
+  if (!confirm('Remove this person from the app?')) return;
+  const { error } = await sb.from('profiles').delete().eq('id', eP);
+  if (error) return toast(error.message);
+  hide('profM'); await load(); render();
+};
+</script>
+</body>
+</html>
