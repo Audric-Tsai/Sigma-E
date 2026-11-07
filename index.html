@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sigma E</title>
 <style>
-:root{--accent:#2b8fd6;--cyan:#5fd0e3;--fusion:#f59e2b;--flux:#2b8fd6;--tint:#eef8fc;
+:root{--shared:#9b7be0;--accent:#2b8fd6;--cyan:#5fd0e3;--fusion:#f59e2b;--flux:#2b8fd6;--tint:#eef8fc;
  --bg:#ffffff;--text:#1a1a1a;--mut:#8a8f98;--line:#eeeeee;--hover:#f7f7f7;--card:#ffffff}
 [data-theme=dark]{--tint:#16232b;--bg:#141414;--text:#ececec;--mut:#7d828a;--line:#262626;--hover:#1c1c1c;--card:#1b1b1b}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -87,6 +87,7 @@ select:disabled{opacity:.5}
   <div class="logo">Sigma <span>E</span></div>
   <div class="tab" data-v="fusion">Fusion</div>
   <div class="tab" data-v="flux">Flux</div>
+  <div class="tab" data-v="shared">Shared</div>
   <div class="tab" data-v="calendar">Calendar</div>
   <div class="tab" data-v="progress">Progress</div>
   <div class="tab" data-v="team">Team</div>
@@ -100,7 +101,7 @@ select:disabled{opacity:.5}
   <h3 id="tmH">New task</h3>
   <label>Description</label><textarea id="tTitle" rows="3" placeholder="What needs doing?"></textarea>
   <div class="two">
-    <div><label>Team</label><select id="tTeam"><option value="fusion">Fusion</option><option value="flux">Flux</option></select></div>
+    <div><label>Team</label><select id="tTeam"><option value="fusion">Fusion</option><option value="flux">Flux</option><option value="shared">Shared</option></select></div>
     <div><label>Due</label><input type="date" id="tDue"></div>
   </div>
   <label>Status</label><select id="tStat"><option value="todo">To do</option><option value="doing">In progress</option><option value="done">Done</option></select>
@@ -145,9 +146,9 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const C = { fusion:'var(--fusion)', flux:'var(--flux)' };
-const N = { fusion:'Sigma E Fusion', flux:'Sigma E Flux' };
-const SUB = { fusion:'FTC #38620', flux:'FTC #38621' };
+const C = { fusion:'var(--fusion)', flux:'var(--flux)', shared:'var(--shared)' };
+const N = { fusion:'Sigma E Fusion', flux:'Sigma E Flux', shared:'Shared' };
+const SUB = { fusion:'FTC #38620', flux:'FTC #38621', shared:'Open to everyone, any team' };
 const ROLE = { admin:'Admin', leader:'Leader', member:'Member' };
 
 let galTeam = null;
@@ -174,7 +175,7 @@ const show = id => $(id).classList.add('show'), hide = id => $(id).classList.rem
 // Permissions
 const isAdmin = () => me?.role === 'admin';
 const myTeams = () => isAdmin() ? ['fusion','flux'] : me?.team ? [me.team] : [];
-const canManage = team => isAdmin() || (me?.role === 'leader' && me.team === team);
+const canManage = team => team === 'shared' || isAdmin() || (me?.role === 'leader' && me.team === team);
 const canTick = t => canManage(t.team) || canJoin(t.team) || t.assignees.includes(me?.id);
 const canJoin = team => !!me?.team && me.team === team; // members: self-assign within own team
 let selfOnly = false;
@@ -219,7 +220,7 @@ async function start(user){
   if (!me) { toast('Profile not found. Did you run schema.sql?'); return; }
   setTimeout(syncDrive, 1500);
   const h = location.hash.slice(1);
-  view = ['fusion','flux','calendar','progress','team','gallery'].includes(h) ? h : (me.team || 'team');
+  view = ['fusion','flux','shared','calendar','progress','team','gallery'].includes(h) ? h : (me.team || 'team');
   render();
 }
 async function load(){
@@ -343,7 +344,7 @@ function openTask(id, team){
 }
 function people(){
   const team=$('tTeam').value;
-  $('tPeople').innerHTML = profiles.filter(p => p.team===team || sel.includes(p.id))
+  $('tPeople').innerHTML = profiles.filter(p => team==='shared' || p.team===team || sel.includes(p.id))
     .map(p => `<span class="person ${sel.includes(p.id)?'on':''}" data-pick="${p.id}">${av(p)}${esc(p.name.split(' ')[0])}</span>`).join('')
     || '<span class="empty">No one on this team yet</span>';
 }
