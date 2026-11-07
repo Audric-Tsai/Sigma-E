@@ -162,11 +162,13 @@ $('aSwitch').onclick = () => { signUp=!signUp; $('nameWrap').hidden=!signUp;
   $('authSub').textContent = signUp?'Create your account':'Sign in to continue'; $('aErr').textContent=''; };
 $('aGo').onclick = async () => {
   const email=$('aEmail').value.trim(), password=$('aPass').value; $('aErr').textContent='';
+  if ($('aGo').disabled) return; $('aGo').disabled = true; $('aGo').style.opacity = .5;
   const { data, error } = signUp
     ? await sb.auth.signUp({ email, password, options:{ data:{ name:$('aName').value.trim() } } })
     : await sb.auth.signInWithPassword({ email, password });
+  $('aGo').disabled = false; $('aGo').style.opacity = 1;
   if (error) return $('aErr').textContent = error.message;
-  if (signUp && !data.session) $('aErr').textContent = 'Check your email to confirm, then sign in.';
+  if (signUp && !data.session) { $('aSwitch').click(); $('aErr').textContent = 'Account created. Confirm your email if asked, then sign in.'; }
 };
 $('logout').onclick = async () => { hide('setM'); await sb.auth.signOut(); };
 
