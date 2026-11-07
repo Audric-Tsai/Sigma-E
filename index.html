@@ -16,7 +16,18 @@ nav{box-shadow:inset 0 -2px 0 var(--tint);display:flex;align-items:center;gap:22
 .tab:hover{color:var(--text)}.tab.on{color:var(--accent);border-color:var(--accent)}
 .right{margin-left:auto;display:flex;align-items:center;gap:14px}
 .icon{cursor:pointer;color:var(--mut);font-size:17px}.icon:hover{color:var(--text)}
-main{max-width:760px;margin:0 auto;padding:44px 24px 80px}
+main{max-width:1080px;margin:0 auto;padding:44px 24px 80px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:48px;align-items:start}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+aside.side{position:sticky;top:20px}
+.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}.stat b{font-weight:600}
+.lnk{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}.lnk a{color:var(--accent);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lnk a:hover{text-decoration:underline}
+.lnk .rm{color:var(--mut);cursor:pointer;font-size:12px}.lnk .rm:hover{color:#e5484d}
+.mini{width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text);padding:6px 0;font:inherit;font-size:13px;outline:0;margin-top:4px}
+.cal .d{cursor:pointer}.cal .d:hover{background:var(--hover)}.cal .d.sel{background:var(--tint)}
+.ev.done{text-decoration:line-through;color:var(--mut)}
+.dayitem{padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.dayitem .t{display:block;margin:4px 0 6px}
+input[type=color]{width:26px;height:26px;border:0;padding:0;background:none;cursor:pointer;border-radius:50%}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px}
 h1{font-size:22px;font-weight:600}.sub{color:var(--mut);font-size:13px;margin-top:4px}
 .add{color:var(--accent);cursor:pointer;background:none;border:0;font:inherit}.add:hover{color:var(--text)}
@@ -36,7 +47,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .row:hover{background:var(--hover)}.row.static{cursor:default}.row.static:hover{background:none}
 .box{width:16px;height:16px;border:1.5px solid var(--mut);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--bg)}
 .box.done{background:var(--accent);border-color:var(--accent)}
-.box.doing{border-color:var(--accent);background:linear-gradient(var(--accent),var(--accent)) center/6px 6px no-repeat}
+.box.doing-unused{border-color:var(--accent);background:linear-gradient(var(--accent),var(--accent)) center/6px 6px no-repeat}
 .box.locked{opacity:.4;cursor:default}
 .t{flex:1}.done-t{color:var(--mut);text-decoration:line-through}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
@@ -106,7 +117,6 @@ select:disabled{opacity:.5}
     <div><label>Team</label><select id="tTeam"><option value="fusion">Fusion</option><option value="flux">Flux</option><option value="shared">Shared</option></select></div>
     <div><label>Due</label><input type="date" id="tDue"></div>
   </div>
-  <label>Status</label><select id="tStat"><option value="todo">To do</option><option value="doing">In progress</option><option value="done">Done</option></select>
   <label>Assign</label><div class="people" id="tPeople"></div>
   <div class="acts"><button class="link del" id="tDel">Delete</button><button class="link" data-close="taskM">Cancel</button><button class="btn" id="tSave">Save</button></div>
 </div></div>
@@ -118,17 +128,17 @@ select:disabled{opacity:.5}
     <div><label>Name</label><input id="pName"></div>
     <div><label>Initials</label><input id="pIni" maxlength="3" placeholder="Auto"></div>
   </div>
-  <label>Colour</label><div class="swatches" id="pColors"></div>
+  <label>Colour <span style="opacity:.7">(shows when there's no photo)</span></label><div class="swatches" id="pColors" style="align-items:center"></div>
   <div class="two">
     <div><label>Role</label><select id="pRole"><option value="member">Member</option><option value="leader">Leader</option><option value="admin">Admin</option></select></div>
     <div><label>Team</label><select id="pTeam"><option value="">None</option><option value="fusion">Fusion</option><option value="flux">Flux</option></select></div>
   </div>
-  <label>Jobs</label>
+  <div id="pJobsWrap"><label>Jobs</label>
   <div class="jobs" id="pJobs">
     <label><input type="checkbox" value="coder"> Coder</label>
     <label><input type="checkbox" value="social"> Social Media</label>
     <label><input type="checkbox" value="builder"> Builder</label>
-  </div>
+  </div></div>
   <div class="acts"><button class="link del" id="pDel">Remove</button><button class="link" data-close="profM">Cancel</button><button class="btn" id="pSave">Save</button></div>
 </div></div>
 
@@ -161,7 +171,7 @@ const SUB = { fusion:'FTC #38620', flux:'FTC #38621', shared:'Open to everyone, 
 const ROLE = { admin:'Admin', leader:'Leader', member:'Member' };
 const JOB = { coder:'Coder', social:'Social Media', builder:'Builder' };
 
-let galTeam = null;
+let galTeam = null, links = [], selDay = null;
 let images = [], newColor = null, dropPhoto = false;
 let profiles = [], tasks = [], me = null, view = 'fusion', calOff = 0;
 let eT = null, eP = null, sel = [], newPhoto = null, signUp = false;
@@ -237,8 +247,9 @@ async function load(){
   const [p, t] = await Promise.all([
     sb.from('profiles').select('*').order('name'),
     sb.from('tasks').select('*').order('due', { nullsFirst:false }),
-    sb.from('images').select('*').order('created_at', { ascending:false })
-  ]).then(r => { images = r[2].data || []; return r; });
+    sb.from('images').select('*').order('created_at', { ascending:false }),
+    sb.from('links').select('*').order('created_at')
+  ]).then(r => { images = r[2].data || []; links = r[3].data || []; return r; });
   if (p.error || t.error) toast((p.error||t.error).message);
   profiles = p.data || []; tasks = t.data || [];
   if (me) me = P(me.id);
@@ -266,19 +277,47 @@ function project(team){
   const g = (s,l) => { const L=all.filter(t=>t.status===s); return L.length ? `<h2>${l}</h2>${L.map(row).join('')}` : ''; };
   const sh = tasks.filter(t => t.team==='shared' && t.status!=='done');
   const body = (sh.length ? `<h2><span class="dot" style="background:${C.shared}"></span>Shared · everyone</h2>${sh.map(row).join('')}` : '')
-    + g('doing','In progress') + g('todo','To do') + g('done','Done');
-  return head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
-    + (body || '<div class="empty">No tasks yet.</div>');
+    + g('todo','To do') + g('done','Done');
+  const done = all.filter(t=>t.status==='done').length, left = all.length - done;
+  const overdue = all.filter(t=>t.status!=='done' && t.due && t.due < today()).length;
+  const week = all.filter(t=>t.status!=='done' && t.due && t.due >= today() && t.due <= new Date(Date.now()+7*864e5).toLocaleDateString('en-CA')).length;
+  const tl = links.filter(l => l.team===team);
+  const side = `<aside class="side">
+    <h2 style="margin-top:0"><span class="dot" style="background:${C[team]}"></span>Stats</h2>
+    <div class="stat"><span>Left to do</span><b>${left}</b></div>
+    <div class="stat"><span>Done</span><b>${done}</b></div>
+    <div class="stat"><span>Due this week</span><b>${week}</b></div>
+    <div class="stat"><span>Overdue</span><b style="color:${overdue?'#e5484d':'inherit'}">${overdue}</b></div>
+    <div class="bar" style="margin:12px 0 4px"><div style="width:${pct(all)}%;background:${C[team]}"></div></div>
+    <div class="sub" style="margin:0">${pct(all)}% complete</div>
+    <h2>Links</h2>
+    ${tl.map(l => `<div class="lnk"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)}</a><span class="rm" data-dellink="${l.id}">✕</span></div>`).join('') || '<div class="empty" style="font-size:13px">No links yet.</div>'}
+    <input class="mini" id="lName" placeholder="Link name">
+    <input class="mini" id="lUrl" placeholder="https://...">
+    <button class="add" data-addlink="${team}" style="margin-top:8px;font-size:13px">+ Add link</button>
+  </aside>`;
+  return `<div class="split"><div>` + head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
+    + (body || '<div class="empty">No tasks yet.</div>') + `</div>${side}</div>`;
 }
 function calendar(){
   const now=new Date(), b=new Date(now.getFullYear(), now.getMonth()+calOff, 1), s=new Date(b); s.setDate(1-((b.getDay()+6)%7));
   let c='';
   for (let i=0;i<42;i++){ const x=new Date(s); x.setDate(s.getDate()+i); const k=x.toLocaleDateString('en-CA');
-    c += `<div class="d ${x.getMonth()!==b.getMonth()?'o':''} ${k===today()?'today':''}"><span>${x.getDate()}</span>${
-      tasks.filter(t=>t.due===k).map(t=>`<div class="ev" data-task="${t.id}"><span class="dot" style="background:${C[t.team]}"></span>${esc(t.title)}</div>`).join('')}</div>`; }
+    c += `<div class="d ${x.getMonth()!==b.getMonth()?'o':''} ${k===today()?'today':''} ${k===selDay?'sel':''}" data-day="${k}"><span>${x.getDate()}</span>${
+      tasks.filter(t=>t.due===k).map(t=>`<div class="ev ${t.status==='done'?'done':''}" data-task="${t.id}"><span class="dot" style="background:${C[t.team]}"></span>${esc(t.title)}</div>`).join('')}</div>`; }
+  const dayTasks = selDay ? tasks.filter(t => t.due===selDay) : [];
+  const panel = selDay ? `<aside class="side">
+    <h2 style="margin-top:0">${new Date(selDay+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</h2>
+    ${dayTasks.map(t => `<div class="dayitem" data-task="${t.id}">
+      <span class="proj" style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span class="dot" style="background:${C[t.team]}"></span>${N[t.team]}${t.status==='done'?' · Done ✓':''}</span>
+      <span class="t ${t.status==='done'?'done-t':''}">${esc(t.title)}</span>
+      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)">${stack(t.assignees)} ${t.assignees.map(a=>esc(P(a)?.name?.split(' ')[0]||'')).filter(Boolean).join(', ')}</span>
+    </div>`).join('') || '<div class="empty">Nothing due this day.</div>'}
+    <button class="add" data-closeday="1" style="margin-top:12px;font-size:13px">Close</button>
+  </aside>` : '';
   return head(b.toLocaleDateString('en-GB',{month:'long',year:'numeric'}), '',
     `<div style="display:flex;gap:14px"><button class="add" data-cal="-1">←</button><button class="add" data-cal="0">Today</button><button class="add" data-cal="1">→</button></div>`)
-    + `<div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>`;
+    + `<div class="${selDay?'split':''}"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
 }
 function progress(){
   const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:150px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span class="date">${pct(l)}%</span></div>`;
@@ -290,12 +329,13 @@ function progress(){
 }
 function team(){
   const grp = (label, list) => list.length ? `<h2>${label}</h2>` + list.map(p => `<div class="row" data-prof="${p.id}">${av(p,32)}
-    <span class="t">${esc(p.name)}${p.id===me.id?' <span style="color:var(--mut)">· you</span>':''}</span>${(p.jobs||[]).map(j=>`<span class="job">${JOB[j]}</span>`).join('')}${p.is_owner?'<span class="owner">Owner</span>':''}<span class="role">${ROLE[p.role]}</span></div>`).join('') : '';
+    <span class="t">${esc(p.name)}${p.id===me.id?' <span style="color:var(--mut)">· you</span>':''}</span>${p.role==='admin' ? '<span class="job">All</span>' : p.role==='member' ? (p.jobs||[]).map(j=>`<span class="job">${JOB[j]}</span>`).join('') : ''}${p.is_owner?'<span class="owner">Owner</span>':''}<span class="role">${ROLE[p.role]}</span></div>`).join('') : '';
   const order = l => l.sort((a,b) => (b.is_owner-a.is_owner) || ['admin','leader','member'].indexOf(a.role) - ['admin','leader','member'].indexOf(b.role));
   return head('Team', profiles.length + ' members') + (myTeams().length ? '' : '<div class="empty">An admin needs to add you to a team first.</div>')
     + grp(`<span class="dot" style="background:${C.fusion}"></span>${N.fusion}`, order(profiles.filter(p=>p.team==='fusion')))
     + grp(`<span class="dot" style="background:${C.flux}"></span>${N.flux}`, order(profiles.filter(p=>p.team==='flux')))
-    + grp('No team yet', order(profiles.filter(p=>!p.team)));
+    + grp('Admins', order(profiles.filter(p=>!p.team && p.role==='admin')))
+    + grp('No team yet', order(profiles.filter(p=>!p.team && p.role!=='admin')));
 }
 
 const driveId = u => (u.match(/\/d\/([\w-]{10,})/) || u.match(/[?&]id=([\w-]{10,})/) || [])[1];
@@ -319,9 +359,25 @@ function gallery(){
 
 // ===== Clicks =====
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
+  const el = e.target.closest('[data-closeday],[data-addlink],[data-dellink],[data-day],[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
   if (!el) return;
   if (el.dataset.close) return hide(el.dataset.close);
+  if (el.dataset.closeday) { selDay = null; return render(); }
+  if (el.dataset.addlink) {
+    const name = $('lName').value.trim(); let url = $('lUrl').value.trim();
+    if (!name || !url) return toast('Add a name and a link');
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    const { error } = await sb.from('links').insert({ team: el.dataset.addlink, name, url });
+    if (error) return toast(error.message);
+    await load(); return render();
+  }
+  if (el.dataset.dellink) {
+    if (!confirm('Remove this link?')) return;
+    const { error } = await sb.from('links').delete().eq('id', +el.dataset.dellink);
+    if (error) return toast(error.message);
+    await load(); return render();
+  }
+  if (el.dataset.day && !e.target.closest('.ev')) { selDay = selDay===el.dataset.day ? null : el.dataset.day; return render(); }
   if (el.dataset.galteam) { galTeam = el.dataset.galteam; return render(); }
   if (el.dataset.delimg) { e.stopPropagation(); return delImage(+el.dataset.delimg); }
   if (el.dataset.open) return window.open(el.dataset.open, '_blank', 'noopener');
@@ -332,7 +388,7 @@ document.addEventListener('click', async e => {
   if (el.dataset.prof) return openProf(el.dataset.prof);
   if (el.dataset.tick) {
     const t = tasks.find(x => x.id == el.dataset.tick); if (!canTick(t)) return;
-    const status = { todo:'doing', doing:'done', done:'todo' }[t.status];
+    const status = t.status==='done' ? 'todo' : 'done';
     const { error } = await sb.from('tasks').update({ status }).eq('id', t.id);
     if (error) return toast(error.message);
     t.status = status; return render();
@@ -350,9 +406,9 @@ function openTask(id, team){
   ['tTitle','tDue'].forEach(k => $(k).disabled = selfOnly && !!t);
   $('tmH').textContent = t ? 'Edit task' : 'New task';
   $('tTitle').value = t?.title || ''; $('tTeam').value = t?.team || team; $('tDue').value = t?.due || '';
-  $('tStat').value = t?.status || 'todo'; $('tTeam').disabled = !isAdmin();
-  sel = t ? [...t.assignees] : []; people(); $('tStat').disabled = false;
-  $('tDel').style.visibility = t ? 'visible' : 'hidden';
+  [...$('tTeam').options].forEach(o => o.hidden = !isAdmin() && o.value!=='shared' && o.value!==me.team);
+  $('tTeam').disabled = !!t && !isAdmin() && !canManage(t.team);
+  sel = t ? [...t.assignees] : []; people();   $('tDel').style.visibility = t ? 'visible' : 'hidden';
   show('taskM'); grow(); $('tTitle').focus();
 }
 function people(){
@@ -369,8 +425,8 @@ $('tPeople').onclick = e => { const p=e.target.closest('[data-pick]'); if(!p) re
 $('tSave').onclick = async () => {
   const title=$('tTitle').value.trim(); if(!title) return;
   const t = tasks.find(x => x.id===eT);
-  const o = selfOnly && t ? { assignees:sel, status:$('tStat').value }
-                          : { title, team:$('tTeam').value, due:$('tDue').value || null, status:$('tStat').value, assignees:sel };
+  const o = selfOnly && t ? { assignees:sel }
+                          : { title, team:$('tTeam').value, due:$('tDue').value || null, assignees:sel };
   const { error } = eT ? await sb.from('tasks').update(o).eq('id', eT) : await sb.from('tasks').insert(o);
   if (error) return toast(error.message);
   hide('taskM'); await load(); render();
@@ -440,6 +496,7 @@ function openProf(id){
   $('pName').value=p.name; $('pRole').value=p.role; $('pTeam').value=p.team||'';
   $('pIni').value = p.initials || '';
   document.querySelectorAll('#pJobs input').forEach(c => { c.checked = (p.jobs||[]).includes(c.value); c.disabled = !canEdit; });
+  $('pJobsWrap').hidden = p.role !== 'member';
   $('pName').disabled = $('pIni').disabled = !canEdit;
   $('pRole').disabled = !isAdmin() || p.is_owner;
   $('pTeam').disabled = !isAdmin() || (p.is_owner && !mine);
@@ -453,7 +510,9 @@ function openProf(id){
 function prev(){ const p=P(eP);
   $('pPrev').innerHTML = av({ ...p, name:$('pName').value||p.name, initials:$('pIni').value.trim(), avatar_color:newColor,
     avatar_url: newPhoto ? URL.createObjectURL(newPhoto) : dropPhoto ? null : p.avatar_url }, 56);
-  $('pColors').innerHTML = COLORS.map(c => `<span class="sw ${c===newColor?'on':''}" style="background:${c}" data-c="${c}"></span>`).join(''); }
+  $('pColors').innerHTML = COLORS.map(c => `<span class="sw ${c===newColor?'on':''}" style="background:${c}" data-c="${c}"></span>`).join('')
+    + `<input type="color" id="pCustom" title="Custom colour" value="${/^#[0-9a-f]{6}$/i.test(newColor||'') ? newColor : '#2b8fd6'}">`;
+  $('pCustom').oninput = e => { newColor = e.target.value; $('pPrev').innerHTML = av({ ...P(eP), name:$('pName').value, initials:$('pIni').value.trim(), avatar_color:newColor, avatar_url: newPhoto ? URL.createObjectURL(newPhoto) : dropPhoto ? null : P(eP).avatar_url }, 56); }; }
 $('pName').oninput = $('pIni').oninput = prev;
 $('pColors').onclick = e => { const c = e.target.dataset.c; if (c) { newColor = c; prev(); } };
 $('pNoPhoto').onclick = () => { dropPhoto = true; newPhoto = null; prev(); };
@@ -461,7 +520,7 @@ $('pFile').onchange = e => { newPhoto = e.target.files[0] || null; prev(); };
 $('pSave').onclick = async () => {
   const p = P(eP);
   const o = { name:$('pName').value.trim() || 'Member', initials:$('pIni').value.trim() || null, avatar_color:newColor,
-    jobs:[...document.querySelectorAll('#pJobs input:checked')].map(c => c.value) };
+    jobs: ($('pRole').value==='member' && p.role==='member') ? [...document.querySelectorAll('#pJobs input:checked')].map(c => c.value) : [] };
   if (isAdmin() && !p.is_owner) o.role = $('pRole').value;
   if (isAdmin() && (!p.is_owner || eP===me.id)) o.team = $('pTeam').value || null;
   if (dropPhoto) o.avatar_url = null;
