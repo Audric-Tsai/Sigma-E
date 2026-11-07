@@ -159,7 +159,7 @@ select:disabled{opacity:.5}
   <h3 id="gH">Add to gallery</h3>
   <div class="two"><div><label>Title (optional)</label><input id="gTitle"></div><div><label>Date</label><input type="date" id="gDate"></div></div>
   <div class="sub" style="margin-top:6px">Leave the date empty to use each photo's own date.</div>
-  <label>Upload images or files (CAD, PDF, anything, up to 50 MB each)</label><input type="file" id="gFile" multiple style="border:0">
+  <label>Upload images or files (CAD, PDF, anything; big files go to Google Drive)</label><input type="file" id="gFile" multiple style="border:0">
   <label>…or paste a Google Drive link</label><input id="gLink" placeholder="https://drive.google.com/...">
   <div class="acts"><button class="link" data-close="galM">Cancel</button><button class="btn" id="gSave">Add</button></div>
 </div></div>
@@ -367,10 +367,10 @@ function gallery(){
   const item = i => {
     const id = i.kind==='drive' && driveId(i.url), folder = i.kind==='drive' && /folders\//.test(i.url);
     const can = i.created_by===me.id || isAdmin();
-    const fname = decodeURIComponent(i.url.split('/').pop().split('?')[0]).replace(/^\d+-/, '');
+    const fname = i.file_name || decodeURIComponent(i.url.split('/').pop().split('?')[0]).replace(/^\d+-/, '');
     const ext = (fname.split('.').pop() || '').toLowerCase();
     const isImg = /^(png|jpe?g|gif|webp|bmp|svg|heic|avif)$/.test(ext);
-    const inner = folder ? '📁<br>Drive folder' : id ? `<img src="https://drive.google.com/thumbnail?id=${id}&sz=w600" loading="lazy">` : i.kind==='drive' ? 'Drive link'
+    const inner = folder ? '📁<br>Drive folder' : (id && i.file_name && !isImg) ? `<div class="file"><b>.${esc(ext.toUpperCase())}</b>${esc(fname)}<span style="color:var(--mut);font-size:11px">in Google Drive</span></div>` : id ? `<img src="https://drive.google.com/thumbnail?id=${id}&sz=w600" loading="lazy">` : i.kind==='drive' ? 'Drive link'
       : isImg ? `<img src="${esc(i.url)}" loading="lazy">` : `<div class="file"><b>.${esc(ext.toUpperCase())}</b>${esc(fname)}</div>`;
     const dt = i.taken_at || (i.created_at||'').slice(0,10);
     return `<div class="gi" data-open="${esc(i.url)}">${inner}${dt?`<span class="date-tag">${new Date(dt+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>`:''}${i.title?`<div class="cap">${esc(i.title)}</div>`:''}${can?`<span class="x" data-delimg="${i.id}">✕</span>`:''}</div>`;
@@ -476,11 +476,16 @@ $('gSave').onclick = async () => {
   $('gSave').disabled = true; $('gSave').textContent = 'Uploading…';
   const rows = [];
   for (const f of files) {
-    if (f.size > 50*1024*1024) { toast(`${f.name} is over 50 MB`); continue; }
+    if (f.size > 45*1024*1024) {   // big files go straight to Google Drive
+      const r = await bigToDrive(f);
+      if (r) rows.push({ url: r.webViewLink, title, kind:'drive', team: galTeam, drive_id: r.id, file_name: f.name,
+        taken_at: $('gDate').value || new Date(f.lastModified || Date.now()).toLocaleDateString('en-CA') });
+      continue;
+    }
     const path = `${me.id}/${Date.now()}-${f.name.replace(/[^\w.]/g,'')}`;
     const up = await sb.storage.from('gallery').upload(path, f, { contentType: f.type || 'application/octet-stream' });
     if (up.error) { toast(up.error.message); continue; }
-    rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam,
+    rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam, file_name: f.name,
       taken_at: $('gDate').value || new Date(f.lastModified || Date.now()).toLocaleDateString('en-CA') });
   }
   if (link) {
@@ -491,6 +496,19 @@ $('gSave').onclick = async () => {
   $('gSave').disabled = false; $('gSave').textContent = 'Add';
   hide('galM'); await load(); render(); syncDrive();
 };
+async function bigToDrive(f){
+  const { data, error } = await sb.functions.invoke('drive-upload', { body: { team: galTeam, name: f.name, mime: f.type || 'application/octet-stream', size: f.size, origin: location.origin } });
+  if (error || data?.error) { toast(data?.error || error.message); return null; }
+  return await new Promise(res => {
+    const x = new XMLHttpRequest();
+    x.open('PUT', data.uploadUrl);
+    x.upload.onprogress = e => { if (e.lengthComputable) $('gSave').textContent = `Uploading ${f.name.slice(0,18)}… ${Math.round(e.loaded/e.total*100)}%`; };
+    x.onload = () => { try { if (x.status < 300) return res(JSON.parse(x.responseText)); } catch(e){} toast('Drive upload failed (' + x.status + ')'); res(null); };
+    x.onerror = () => { toast('Drive upload failed'); res(null); };
+    x.setRequestHeader('Content-Type', f.type || 'application/octet-stream');
+    x.send(f);
+  });
+}
 // Copy any uploaded images that aren't in Drive yet (runs after uploads, and for admins on load)
 let syncing = false;
 async function syncDrive(){
