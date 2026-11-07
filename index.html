@@ -172,6 +172,8 @@ const show = id => $(id).classList.add('show'), hide = id => $(id).classList.rem
 const isAdmin = () => me?.role === 'admin';
 const canManage = team => isAdmin() || (me?.role === 'leader' && me.team === team);
 const canTick = t => canManage(t.team) || t.assignees.includes(me?.id);
+const canJoin = team => !!me?.team && me.team === team; // members: self-assign within own team
+let selfOnly = false;
 
 // ===== Theme =====
 function setTheme(t){ document.documentElement.dataset.theme=t; try{localStorage.setItem('theme',t)}catch(e){}
@@ -244,7 +246,7 @@ function project(team){
   const all = tasks.filter(t => t.team===team);
   const g = (s,l) => { const L=all.filter(t=>t.status===s); return L.length ? `<h2>${l}</h2>${L.map(row).join('')}` : ''; };
   const body = g('doing','In progress') + g('todo','To do') + g('done','Done');
-  return head(N[team], SUB[team], canManage(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
+  return head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
     + (body || '<div class="empty">No tasks yet.</div>');
 }
 function calendar(){
@@ -306,7 +308,7 @@ document.addEventListener('click', async e => {
     if (error) return toast(error.message);
     t.status = status; return render();
   }
-  if (el.dataset.task) { const t = tasks.find(x => x.id == el.dataset.task); if (canManage(t.team)) openTask(t.id); }
+  if (el.dataset.task) { const t = tasks.find(x => x.id == el.dataset.task); if (canManage(t.team) || canJoin(t.team)) openTask(t.id); }
 });
 $('gear').onclick = () => show('setM');
 $('meBtn').onclick = () => openProf(me.id);
@@ -315,24 +317,31 @@ document.querySelectorAll('.modal').forEach(m => m.onclick = e => { if (e.target
 // ===== Task modal =====
 function openTask(id, team){
   eT=id; const t=tasks.find(x=>x.id===id);
+  selfOnly = !canManage(t?.team || team);
+  ['tTitle','tDue'].forEach(k => $(k).disabled = selfOnly && !!t);
   $('tmH').textContent = t ? 'Edit task' : 'New task';
   $('tTitle').value = t?.title || ''; $('tTeam').value = t?.team || team; $('tDue').value = t?.due || '';
   $('tStat').value = t?.status || 'todo'; $('tTeam').disabled = !isAdmin();
-  sel = t ? [...t.assignees] : []; people(); $('tDel').style.visibility = t ? 'visible' : 'hidden';
+  sel = t ? [...t.assignees] : selfOnly ? [me.id] : []; people();
+  $('tStat').disabled = selfOnly && t && !t.assignees.includes(me.id);
+  $('tDel').style.visibility = t && !selfOnly ? 'visible' : 'hidden';
   show('taskM'); $('tTitle').focus();
 }
 function people(){
   const team=$('tTeam').value;
   $('tPeople').innerHTML = profiles.filter(p => p.team===team || sel.includes(p.id))
-    .map(p => `<span class="person ${sel.includes(p.id)?'on':''}" data-pick="${p.id}">${av(p)}${esc(p.name.split(' ')[0])}</span>`).join('')
+    .map(p => `<span class="person ${sel.includes(p.id)?'on':''}" data-pick="${p.id}" style="${selfOnly && p.id!==me.id ? 'pointer-events:none' : ''}">${av(p)}${esc(p.name.split(' ')[0])}</span>`).join('')
     || '<span class="empty">No one on this team yet</span>';
 }
 $('tTeam').onchange = people;
 $('tPeople').onclick = e => { const p=e.target.closest('[data-pick]'); if(!p) return; const id=p.dataset.pick;
+  if (selfOnly && id !== me.id) return;
   sel = sel.includes(id) ? sel.filter(x=>x!==id) : [...sel, id]; people(); };
 $('tSave').onclick = async () => {
   const title=$('tTitle').value.trim(); if(!title) return;
-  const o = { title, team:$('tTeam').value, due:$('tDue').value || null, status:$('tStat').value, assignees:sel };
+  const t = tasks.find(x => x.id===eT);
+  const o = selfOnly && t ? { assignees:sel, ...(sel.includes(me.id) ? { status:$('tStat').value } : {}) }
+                          : { title, team:$('tTeam').value, due:$('tDue').value || null, status:$('tStat').value, assignees:sel };
   const { error } = eT ? await sb.from('tasks').update(o).eq('id', eT) : await sb.from('tasks').insert(o);
   if (error) return toast(error.message);
   hide('taskM'); await load(); render();
