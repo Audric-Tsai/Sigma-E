@@ -215,6 +215,7 @@ async function start(user){
   $('auth').hidden=true; $('appWrap').hidden=false;
   await load(); me = P(user.id);
   if (!me) { toast('Profile not found. Did you run schema.sql?'); return; }
+  setTimeout(syncDrive, 1500);
   const h = location.hash.slice(1);
   view = ['fusion','flux','calendar','progress','team','gallery'].includes(h) ? h : (me.team || 'team');
   render();
@@ -374,11 +375,6 @@ $('gSave').onclick = async () => {
     const up = await sb.storage.from('gallery').upload(path, f);
     if (up.error) { toast(up.error.message); continue; }
     rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam });
-    // Copy to the team's Google Drive folder (skipped quietly if Drive isn't configured)
-    const fd = new FormData(); fd.append('team', galTeam); fd.append('file', f);
-    sb.functions.invoke('drive-upload', { body: fd }).then(({ data, error }) => {
-      if (error || data?.error) toast('Saved, but Drive copy failed: ' + (data?.error || error.message));
-    });
   }
   if (link) {
     if (!/^https:\/\/(drive|docs)\.google\.com\//.test(link)) toast('That is not a Google Drive link');
@@ -386,8 +382,28 @@ $('gSave').onclick = async () => {
   }
   if (rows.length) { const { error } = await sb.from('images').insert(rows); if (error) toast(error.message); }
   $('gSave').disabled = false; $('gSave').textContent = 'Add';
-  hide('galM'); await load(); render();
+  hide('galM'); await load(); render(); syncDrive();
 };
+// Copy any uploaded images that aren't in Drive yet (runs after uploads, and for admins on load)
+let syncing = false;
+async function syncDrive(){
+  if (syncing) return; syncing = true;
+  const todo = images.filter(i => i.kind==='upload' && !i.drive_id && (isAdmin() || i.created_by===me.id));
+  let ok = 0;
+  for (const i of todo) {
+    try {
+      const blob = await (await fetch(i.url)).blob();
+      const fd = new FormData(); fd.append('team', i.team);
+      fd.append('file', new File([blob], decodeURIComponent(i.url.split('/').pop()).replace(/^\d+-/, ''), { type: blob.type }));
+      const { data, error } = await sb.functions.invoke('drive-upload', { body: fd });
+      if (error || data?.error) { toast('Drive copy failed: ' + (data?.error || error.message)); break; }
+      if (data?.skipped) break;
+      await sb.from('images').update({ drive_id: data.id }).eq('id', i.id); i.drive_id = data.id; ok++;
+    } catch (e) { toast('Drive copy failed'); break; }
+  }
+  if (ok) toast(`Copied ${ok} image${ok>1?'s':''} to Google Drive`);
+  syncing = false;
+}
 async function delImage(id){
   if (!confirm('Delete this item?')) return;
   const img = images.find(i => i.id===id);
