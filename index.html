@@ -50,7 +50,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .box.done{background:var(--accent);border-color:var(--accent)}
 .box.doing-unused{border-color:var(--accent);background:linear-gradient(var(--accent),var(--accent)) center/6px 6px no-repeat}
 .box.locked{opacity:.4;cursor:default}
-.t{flex:1}.by{display:block;font-size:11px;color:var(--mut);margin-top:2px;white-space:normal}.done-t{color:var(--mut);text-decoration:line-through}
+.t{flex:1}.atts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.att{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--tint);color:var(--accent);text-decoration:none;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}.att:hover{text-decoration:underline}.att .x{margin-left:6px;color:var(--mut);cursor:pointer}.by{display:block;font-size:11px;color:var(--mut);margin-top:2px;white-space:normal}.done-t{color:var(--mut);text-decoration:line-through}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .date{color:var(--mut);font-size:12px;min-width:72px;text-align:center;border-radius:12px;padding:3px 12px;white-space:nowrap;flex-shrink:0}
 .due-over{background:#fde8e8;color:#d13438}.due-today{background:#fdebd8;color:#c25e00}.due-tom{background:#fdf6d3;color:#9a7b00}.due-week{background:#e3f1fb;color:#1f6fb2}
@@ -123,6 +123,8 @@ select:disabled{opacity:.5}
     <div><label>Due</label><input type="date" id="tDue"></div>
   </div>
   <label>Assign</label><div class="people" id="tPeople"></div>
+  <label>Attachments</label><div class="atts" id="tAtts" style="margin-top:0"></div>
+  <label for="tFiles" class="link" style="display:inline-block;margin-top:8px;color:var(--accent);font-size:13px;cursor:pointer">📎 Attach files</label><input type="file" id="tFiles" multiple hidden>
   <div class="acts"><button class="link del" id="tDel">Delete</button><button class="link" data-close="taskM">Cancel</button><button class="btn" id="tSave">Save</button></div>
 </div></div>
 
@@ -184,6 +186,7 @@ const SUB = { fusion:'FTC #38620', flux:'FTC #38621', shared:'Open to everyone, 
 const ROLE = { admin:'Admin', leader:'Leader', member:'Member' };
 const JOB = { coder:'Coder', social:'Social Media', builder:'Builder' };
 
+let atts = [], newFiles = [];
 let galTeam = null, links = [], selDay = null, linkTeam = null;
 let images = [], newColor = null, dropPhoto = false;
 let profiles = [], tasks = [], me = null, view = 'fusion', calOff = 0;
@@ -278,6 +281,7 @@ function render(){
 }
 const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btn}</div>`;
 
+const attChips = (list, removable) => (list||[]).map((a,i) => `<a class="att" href="${esc(a.url)}" target="_blank" rel="noopener" download data-stop="1">📎 ${esc(a.name)}${removable?`<span class="x" data-rmatt="${i}">✕</span>`:''}</a>`).join('');
 const byLine = t => { const p = P(t.created_by); return p ? `<span class="by">Assigned by ${esc(p.name)}</span>` : ''; };
 const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
 function dueInfo(t){
@@ -292,7 +296,7 @@ function row(t){
   const d = dueInfo(t);
   return `<div class="row ${d.row}" data-task="${t.id}">
     <span class="box ${t.status} ${canTick(t)?'':'locked'}" data-tick="${t.id}">${t.status==='done'?'✓':''}</span>
-    <span class="t"><span class="${t.status==='done'?'done-t':''}">${esc(t.title)}</span>${byLine(t)}</span>
+    <span class="t"><span class="${t.status==='done'?'done-t':''}">${esc(t.title)}</span>${byLine(t)}${t.attachments?.length?`<span class="atts">${attChips(t.attachments)}</span>`:''}</span>
     ${stack(t.assignees)}<span class="date ${d.cls}">${d.label}</span></div>`;
 }
 function project(team){
@@ -335,7 +339,7 @@ function calendar(){
     <h2 style="margin-top:0">${new Date(selDay+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</h2>
     ${dayTasks.map(t => `<div class="dayitem" data-task="${t.id}">
       <span class="proj" style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span class="dot" style="background:${C[t.team]}"></span>${N[t.team]}${t.status==='done'?' · Done ✓':''}</span>
-      <span class="t"><span class="${t.status==='done'?'done-t':''}">${esc(t.title)}</span>${byLine(t)}</span>
+      <span class="t"><span class="${t.status==='done'?'done-t':''}">${esc(t.title)}</span>${byLine(t)}${t.attachments?.length?`<span class="atts">${attChips(t.attachments)}</span>`:''}</span>
       <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)">${stack(t.assignees)} ${t.assignees.map(a=>esc(P(a)?.name?.split(' ')[0]||'')).filter(Boolean).join(', ')}</span>
     </div>`).join('') || '<div class="empty">Nothing due this day.</div>'}
     <button class="add" data-closeday="1" style="margin-top:12px;font-size:13px">Close</button>
@@ -388,6 +392,7 @@ function gallery(){
 
 // ===== Clicks =====
 document.addEventListener('click', async e => {
+  if (e.target.closest('[data-stop]') && !e.target.closest('[data-rmatt]')) return;
   const el = e.target.closest('[data-openlink],[data-closeday],[data-addlink],[data-dellink],[data-day],[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
   if (!el) return;
   if (el.dataset.close) return hide(el.dataset.close);
@@ -431,7 +436,8 @@ function openTask(id, team){
   $('tTitle').value = t?.title || ''; $('tTeam').value = t?.team || team; $('tDue').value = t?.due || '';
   [...$('tTeam').options].forEach(o => o.hidden = !isAdmin() && o.value!=='shared' && o.value!==me.team);
   $('tTeam').disabled = !!t && !isAdmin() && !canManage(t.team);
-  sel = t ? [...t.assignees] : []; people();   $('tDel').style.visibility = t ? 'visible' : 'hidden';
+  sel = t ? [...t.assignees] : []; people();
+  atts = t ? [...(t.attachments||[])] : []; newFiles = []; $('tFiles').value = ''; drawAtts();   $('tDel').style.visibility = t ? 'visible' : 'hidden';
   show('taskM'); grow(); $('tTitle').focus();
 }
 function people(){
@@ -441,15 +447,33 @@ function people(){
     || '<span class="empty">No one on this team yet</span>';
 }
 $('tTeam').onchange = people;
+function drawAtts(){ $('tAtts').innerHTML = attChips(atts, true) + newFiles.map(f => `<span class="att" style="opacity:.6">⏳ ${esc(f.name)}</span>`).join('') || '<span class="sub" style="margin:0">No files</span>'; }
+$('tFiles').onchange = e => { newFiles.push(...e.target.files); e.target.value=''; drawAtts(); };
+$('tAtts').onclick = e => { const r = e.target.closest('[data-rmatt]'); if (!r) return; e.preventDefault(); e.stopPropagation(); atts.splice(+r.dataset.rmatt, 1); drawAtts(); };
 const grow = () => { const a=$('tTitle'); a.style.height='auto'; a.style.height=a.scrollHeight+2+'px'; };
 $('tTitle').oninput = grow;
 $('tPeople').onclick = e => { const p=e.target.closest('[data-pick]'); if(!p) return; const id=p.dataset.pick;
   sel = sel.includes(id) ? sel.filter(x=>x!==id) : [...sel, id]; people(); };
 $('tSave').onclick = async () => {
   const title=$('tTitle').value.trim(); if(!title) return;
+  if (newFiles.length) {
+    $('tSave').disabled = true;
+    for (const f of newFiles) {
+      $('tSave').textContent = 'Uploading…';
+      if (f.size > 45*1024*1024) {
+        const tm = $('tTeam').value === 'shared' ? (me.team || 'fusion') : $('tTeam').value;
+        const r = await bigToDrive(f, tm); if (r) atts.push({ name: f.name, url: r.webViewLink });
+      } else {
+        const path = `${me.id}/task-${Date.now()}-${f.name.replace(/[^\w.]/g,'')}`;
+        const up = await sb.storage.from('gallery').upload(path, f, { contentType: f.type || 'application/octet-stream' });
+        if (up.error) toast(up.error.message); else atts.push({ name: f.name, url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl });
+      }
+    }
+    newFiles = []; $('tSave').disabled = false; $('tSave').textContent = 'Save';
+  }
   const t = tasks.find(x => x.id===eT);
-  const o = selfOnly && t ? { assignees:sel }
-                          : { title, team:$('tTeam').value, due:$('tDue').value || null, assignees:sel };
+  const o = selfOnly && t ? { assignees:sel, attachments:atts }
+                          : { title, team:$('tTeam').value, due:$('tDue').value || null, assignees:sel, attachments:atts };
   const { error } = eT ? await sb.from('tasks').update(o).eq('id', eT) : await sb.from('tasks').insert(o);
   if (error) return toast(error.message);
   hide('taskM'); await load(); render();
@@ -498,8 +522,8 @@ $('gSave').onclick = async () => {
   $('gSave').disabled = false; $('gSave').textContent = 'Add';
   hide('galM'); await load(); render(); syncDrive();
 };
-async function bigToDrive(f){
-  const { data, error } = await sb.functions.invoke('drive-upload', { body: { team: galTeam, name: f.name, mime: f.type || 'application/octet-stream', size: f.size, origin: location.origin } });
+async function bigToDrive(f, team = galTeam){
+  const { data, error } = await sb.functions.invoke('drive-upload', { body: { team, name: f.name, mime: f.type || 'application/octet-stream', size: f.size, origin: location.origin } });
   if (error || data?.error) { toast(data?.error || error.message); return null; }
   return await new Promise(res => {
     const x = new XMLHttpRequest();
