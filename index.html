@@ -186,16 +186,25 @@ $('aSwitch').onclick = () => { signUp=!signUp; $('nameWrap').hidden=!signUp;
 $('aGo').onclick = async () => {
   const email=$('aEmail').value.trim(), password=$('aPass').value; $('aErr').textContent='';
   if ($('aGo').disabled) return; $('aGo').disabled = true; $('aGo').style.opacity = .5;
+  $('aErr').style.color = '';
+  creating = signUp;
   const { data, error } = signUp
     ? await sb.auth.signUp({ email, password, options:{ data:{ name:$('aName').value.trim() } } })
     : await sb.auth.signInWithPassword({ email, password });
+  if (signUp && data?.session) await sb.auth.signOut();
+  creating = false;
   $('aGo').disabled = false; $('aGo').style.opacity = 1;
-  if (error) return $('aErr').textContent = error.message;
-  if (signUp && !data.session) { $('aSwitch').click(); $('aErr').textContent = 'Account created. Confirm your email if asked, then sign in.'; }
+  if (error) return $('aErr').textContent = /security purposes|rate limit/i.test(error.message) ? 'Please wait a minute, then try again.' : error.message;
+  if (signUp) {
+    $('aSwitch').click(); $('aPass').value = '';
+    $('aErr').style.color = 'var(--accent)';
+    $('aErr').textContent = data?.session ? 'Account created. Please sign in.' : 'Account created. Check your email to confirm, then sign in.';
+  }
 };
 $('logout').onclick = async () => { hide('setM'); await sb.auth.signOut(); };
 
-sb.auth.onAuthStateChange((_e, session) => session ? start(session.user) : showAuth());
+let creating = false;
+sb.auth.onAuthStateChange((_e, session) => { if (creating) return; session ? start(session.user) : showAuth(); });
 function showAuth(){ $('appWrap').hidden=true; $('auth').hidden=false; }
 
 async function start(user){
