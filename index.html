@@ -320,10 +320,10 @@ function calendar(){
     + `<div class="${selDay?'split':''}"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
 }
 function progress(){
-  const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:150px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span class="date">${pct(l)}%</span></div>`;
+  const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:170px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span class="date">${pct(l)}%</span></div>`;
   return head('Progress') + (myTeams().length ? '' : '<div class="empty">An admin needs to add you to a team first.</div>') + myTeams().map(team => {
     const tt = tasks.filter(t => t.team===team);
-    return `<h2><span class="dot" style="background:${C[team]}"></span>${N[team]}</h2>` + bar(`<span class="dot" style="background:${C[team]}"></span>`, '<b>Team</b>', tt)
+    return `<div style="height:20px"></div>` + bar(`<span class="dot" style="background:${C[team]}"></span>`, `<b>${N[team]}</b>`, tt)
       + profiles.filter(p => p.team===team).map(p => bar(av(p), esc(p.name), tt.filter(t => t.assignees.includes(p.id)))).join('');
   }).join('');
 }
