@@ -49,9 +49,11 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .cal .d.o{opacity:.35}.cal .d.today>span{color:var(--accent);font-weight:600}
 .ev{color:var(--text);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;display:flex;align-items:center;gap:4px}
 .modal{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9}.modal.show{display:flex}
-.mbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:400px;max-width:92vw}
+.mbox{max-height:92vh;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:400px;max-width:92vw}
 .mbox h3{font-size:16px;font-weight:600;margin-bottom:16px}
 label{display:block;font-size:12px;color:var(--mut);margin:14px 0 6px}
+textarea{width:100%;min-height:72px;resize:none;overflow:hidden;background:transparent;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:10px;font:inherit;line-height:1.5;outline:0}textarea:focus{border-color:var(--accent)}textarea:disabled{opacity:.6}
+.t{white-space:pre-wrap}
 input,select{width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text);padding:6px 0;font:inherit;outline:0}
 input:focus,select:focus{border-color:var(--accent)}select option{background:var(--card)}
 select:disabled{opacity:.5}
@@ -96,7 +98,7 @@ select:disabled{opacity:.5}
 
 <div class="modal" id="taskM"><div class="mbox">
   <h3 id="tmH">New task</h3>
-  <label>Title</label><input id="tTitle" placeholder="What needs doing?">
+  <label>Description</label><textarea id="tTitle" rows="3" placeholder="What needs doing?"></textarea>
   <div class="two">
     <div><label>Team</label><select id="tTeam"><option value="fusion">Fusion</option><option value="flux">Flux</option></select></div>
     <div><label>Due</label><input type="date" id="tDue"></div>
@@ -337,7 +339,7 @@ function openTask(id, team){
   $('tStat').value = t?.status || 'todo'; $('tTeam').disabled = !isAdmin();
   sel = t ? [...t.assignees] : []; people(); $('tStat').disabled = false;
   $('tDel').style.visibility = t ? 'visible' : 'hidden';
-  show('taskM'); $('tTitle').focus();
+  show('taskM'); grow(); $('tTitle').focus();
 }
 function people(){
   const team=$('tTeam').value;
@@ -346,6 +348,8 @@ function people(){
     || '<span class="empty">No one on this team yet</span>';
 }
 $('tTeam').onchange = people;
+const grow = () => { const a=$('tTitle'); a.style.height='auto'; a.style.height=a.scrollHeight+2+'px'; };
+$('tTitle').oninput = grow;
 $('tPeople').onclick = e => { const p=e.target.closest('[data-pick]'); if(!p) return; const id=p.dataset.pick;
   sel = sel.includes(id) ? sel.filter(x=>x!==id) : [...sel, id]; people(); };
 $('tSave').onclick = async () => {
