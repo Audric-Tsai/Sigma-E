@@ -158,6 +158,13 @@ select:disabled{opacity:.5}
   <div class="acts"><button class="link" data-close="galM">Cancel</button><button class="btn" id="gSave">Add</button></div>
 </div></div>
 
+<div class="modal" id="linkM"><div class="mbox">
+  <h3>Add link</h3>
+  <label>Name</label><input id="lName" placeholder="e.g. Engineering Notebook">
+  <label>Link</label><input id="lUrl" placeholder="https://...">
+  <div class="acts"><button class="link" data-close="linkM">Cancel</button><button class="btn" id="lSave">Add</button></div>
+</div></div>
+
 <div id="toast"></div>
 
 <script type="module">
@@ -171,7 +178,7 @@ const SUB = { fusion:'FTC #38620', flux:'FTC #38621', shared:'Open to everyone, 
 const ROLE = { admin:'Admin', leader:'Leader', member:'Member' };
 const JOB = { coder:'Coder', social:'Social Media', builder:'Builder' };
 
-let galTeam = null, links = [], selDay = null;
+let galTeam = null, links = [], selDay = null, linkTeam = null;
 let images = [], newColor = null, dropPhoto = false;
 let profiles = [], tasks = [], me = null, view = 'fusion', calOff = 0;
 let eT = null, eP = null, sel = [], newPhoto = null, signUp = false;
@@ -292,9 +299,7 @@ function project(team){
     <div class="sub" style="margin:0">${pct(all)}% complete</div>
     <h2>Links</h2>
     ${tl.map(l => `<div class="lnk"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)}</a><span class="rm" data-dellink="${l.id}">✕</span></div>`).join('') || '<div class="empty" style="font-size:13px">No links yet.</div>'}
-    <input class="mini" id="lName" placeholder="Link name">
-    <input class="mini" id="lUrl" placeholder="https://...">
-    <button class="add" data-addlink="${team}" style="margin-top:8px;font-size:13px">+ Add link</button>
+    <button class="add" data-openlink="${team}" style="margin-top:10px;font-size:13px">+ Add link</button>
   </aside>`;
   return `<div class="split"><div>` + head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
     + (body || '<div class="empty">No tasks yet.</div>') + `</div>${side}</div>`;
@@ -359,18 +364,11 @@ function gallery(){
 
 // ===== Clicks =====
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-closeday],[data-addlink],[data-dellink],[data-day],[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
+  const el = e.target.closest('[data-openlink],[data-closeday],[data-addlink],[data-dellink],[data-day],[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
   if (!el) return;
   if (el.dataset.close) return hide(el.dataset.close);
   if (el.dataset.closeday) { selDay = null; return render(); }
-  if (el.dataset.addlink) {
-    const name = $('lName').value.trim(); let url = $('lUrl').value.trim();
-    if (!name || !url) return toast('Add a name and a link');
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    const { error } = await sb.from('links').insert({ team: el.dataset.addlink, name, url });
-    if (error) return toast(error.message);
-    await load(); return render();
-  }
+  if (el.dataset.openlink) { linkTeam = el.dataset.openlink; $('lName').value=''; $('lUrl').value=''; show('linkM'); return $('lName').focus(); }
   if (el.dataset.dellink) {
     if (!confirm('Remove this link?')) return;
     const { error } = await sb.from('links').delete().eq('id', +el.dataset.dellink);
@@ -436,6 +434,16 @@ $('tDel').onclick = async () => {
   const { error } = await sb.from('tasks').delete().eq('id', eT);
   if (error) return toast(error.message);
   hide('taskM'); await load(); render();
+};
+
+// ===== Links =====
+$('lSave').onclick = async () => {
+  const name = $('lName').value.trim(); let url = $('lUrl').value.trim();
+  if (!name || !url) return toast('Add a name and a link');
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const { error } = await sb.from('links').insert({ team: linkTeam, name, url });
+  if (error) return toast(error.message);
+  hide('linkM'); await load(); render();
 };
 
 // ===== Gallery =====
