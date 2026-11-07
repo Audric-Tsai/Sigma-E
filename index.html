@@ -51,7 +51,11 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .box.locked{opacity:.4;cursor:default}
 .t{flex:1}.done-t{color:var(--mut);text-decoration:line-through}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.date{color:var(--mut);font-size:13px;width:56px;text-align:right}.late{color:#e5484d}
+.date{color:var(--mut);font-size:12px;min-width:64px;text-align:center;border-radius:10px;padding:2px 8px}
+.due-over{background:#fde8e8;color:#d13438}.due-today{background:#fdebd8;color:#c25e00}.due-tom{background:#fdf6d3;color:#9a7b00}.due-week{background:#e3f1fb;color:#1f6fb2}
+[data-theme=dark] .due-over{background:#3d1d1e;color:#ff8a8d}[data-theme=dark] .due-today{background:#3b2a17;color:#ffb366}[data-theme=dark] .due-tom{background:#36311a;color:#f0d36b}[data-theme=dark] .due-week{background:#17293a;color:#7cc0f0}
+.row.over{box-shadow:inset 3px 0 0 #d13438}.row.today{box-shadow:inset 3px 0 0 #e8790c}.row.tom{box-shadow:inset 3px 0 0 #d4ac0d}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin:-16px 0 8px;font-size:11px}.legend span{border-radius:10px;padding:1px 8px}
 .role{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:1px 8px}
 .av{border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;flex-shrink:0;border:1.5px solid var(--bg)}
 .stack{display:inline-flex}.stack .av+.av{margin-left:-6px}
@@ -272,12 +276,21 @@ function render(){
 }
 const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btn}</div>`;
 
+const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
+function dueInfo(t){
+  if (!t.due || t.status==='done') return { cls:'', row:'', label: fmt(t.due) };
+  if (t.due < today()) return { cls:'due-over', row:'over', label: 'Overdue · ' + fmt(t.due) };
+  if (t.due === today()) return { cls:'due-today', row:'today', label: 'Today' };
+  if (t.due === addDays(1)) return { cls:'due-tom', row:'tom', label: 'Tomorrow' };
+  if (t.due <= addDays(7)) return { cls:'due-week', row:'', label: fmt(t.due) };
+  return { cls:'', row:'', label: fmt(t.due) };
+}
 function row(t){
-  const late = t.status!=='done' && t.due && t.due < today();
-  return `<div class="row" data-task="${t.id}">
+  const d = dueInfo(t);
+  return `<div class="row ${d.row}" data-task="${t.id}">
     <span class="box ${t.status} ${canTick(t)?'':'locked'}" data-tick="${t.id}">${t.status==='done'?'✓':''}</span>
     <span class="t ${t.status==='done'?'done-t':''}">${esc(t.title)}</span>
-    ${stack(t.assignees)}<span class="date ${late?'late':''}">${fmt(t.due)}</span></div>`;
+    ${stack(t.assignees)}<span class="date ${d.cls}">${d.label}</span></div>`;
 }
 function project(team){
   const all = tasks.filter(t => t.team===team);
@@ -307,6 +320,7 @@ function project(team){
     <button class="add" data-openlink="${team}" style="margin-top:10px;font-size:13px">+ Add link</button>
   </aside>`;
   return `<div class="split"><div>` + head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
+    + `<div class="legend"><span class="due-over">Overdue</span><span class="due-today">Today</span><span class="due-tom">Tomorrow</span><span class="due-week">This week</span></div>`
     + (body || '<div class="empty">No tasks yet.</div>') + `</div>${side}</div>`;
 }
 function calendar(){
