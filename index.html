@@ -170,6 +170,7 @@ const show = id => $(id).classList.add('show'), hide = id => $(id).classList.rem
 
 // Permissions
 const isAdmin = () => me?.role === 'admin';
+const myTeams = () => isAdmin() ? ['fusion','flux'] : me?.team ? [me.team] : [];
 const canManage = team => isAdmin() || (me?.role === 'leader' && me.team === team);
 const canTick = t => canManage(t.team) || t.assignees.includes(me?.id);
 const canJoin = team => !!me?.team && me.team === team; // members: self-assign within own team
@@ -229,7 +230,9 @@ async function load(){
 
 // ===== Views =====
 function render(){
-  document.querySelectorAll('.tab').forEach(n => n.classList.toggle('on', n.dataset.v===view));
+  if (['fusion','flux'].includes(view) && !myTeams().includes(view)) view = myTeams()[0] || 'team';
+  document.querySelectorAll('.tab').forEach(n => { n.classList.toggle('on', n.dataset.v===view);
+    if (['fusion','flux'].includes(n.dataset.v)) n.hidden = !myTeams().includes(n.dataset.v); });
   $('meBtn').innerHTML = av(me, 28);
   $('app').innerHTML = view==='calendar' ? calendar() : view==='progress' ? progress() : view==='team' ? team() : view==='gallery' ? gallery() : project(view);
 }
@@ -261,7 +264,7 @@ function calendar(){
 }
 function progress(){
   const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:150px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span class="date">${pct(l)}%</span></div>`;
-  return head('Progress') + ['fusion','flux'].map(team => {
+  return head('Progress') + (myTeams().length ? '' : '<div class="empty">An admin needs to add you to a team first.</div>') + myTeams().map(team => {
     const tt = tasks.filter(t => t.team===team);
     return `<h2><span class="dot" style="background:${C[team]}"></span>${N[team]}</h2>` + bar(`<span class="dot" style="background:${C[team]}"></span>`, '<b>Team</b>', tt)
       + profiles.filter(p => p.team===team).map(p => bar(av(p), esc(p.name), tt.filter(t => t.assignees.includes(p.id)))).join('');
@@ -271,7 +274,7 @@ function team(){
   const grp = (label, list) => list.length ? `<h2>${label}</h2>` + list.map(p => `<div class="row" data-prof="${p.id}">${av(p,32)}
     <span class="t">${esc(p.name)}${p.id===me.id?' <span style="color:var(--mut)">· you</span>':''}</span>${p.is_owner?'<span class="owner">Owner</span>':''}<span class="role">${ROLE[p.role]}</span></div>`).join('') : '';
   const order = l => l.sort((a,b) => (b.is_owner-a.is_owner) || ['admin','leader','member'].indexOf(a.role) - ['admin','leader','member'].indexOf(b.role));
-  return head('Team', profiles.length + ' members')
+  return head('Team', profiles.length + ' members') + (myTeams().length ? '' : '<div class="empty">An admin needs to add you to a team first.</div>')
     + grp(`<span class="dot" style="background:${C.fusion}"></span>${N.fusion}`, order(profiles.filter(p=>p.team==='fusion')))
     + grp(`<span class="dot" style="background:${C.flux}"></span>${N.flux}`, order(profiles.filter(p=>p.team==='flux')))
     + grp('No team yet', order(profiles.filter(p=>!p.team)));
