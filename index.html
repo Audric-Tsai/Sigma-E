@@ -374,6 +374,11 @@ $('gSave').onclick = async () => {
     const up = await sb.storage.from('gallery').upload(path, f);
     if (up.error) { toast(up.error.message); continue; }
     rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam });
+    // Copy to the team's Google Drive folder (skipped quietly if Drive isn't configured)
+    const fd = new FormData(); fd.append('team', galTeam); fd.append('file', f);
+    sb.functions.invoke('drive-upload', { body: fd }).then(({ data, error }) => {
+      if (error || data?.error) toast('Saved, but Drive copy failed: ' + (data?.error || error.message));
+    });
   }
   if (link) {
     if (!/^https:\/\/(drive|docs)\.google\.com\//.test(link)) toast('That is not a Google Drive link');
