@@ -278,12 +278,12 @@ const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div cl
 
 const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
 function dueInfo(t){
-  if (!t.due || t.status==='done') return { cls:'', row:'', label: fmt(t.due) };
+  if (t.status==='done') return { cls:'', row:'', label: fmt(t.due) };
+  if (!t.due) return { cls:'due-week', row:'', label: 'No date' };
   if (t.due < today()) return { cls:'due-over', row:'over', label: 'Overdue · ' + fmt(t.due) };
   if (t.due === today()) return { cls:'due-today', row:'today', label: 'Today' };
   if (t.due === addDays(1)) return { cls:'due-tom', row:'tom', label: 'Tomorrow' };
-  if (t.due <= addDays(7)) return { cls:'due-week', row:'', label: fmt(t.due) };
-  return { cls:'', row:'', label: fmt(t.due) };
+  return { cls:'due-week', row:'', label: fmt(t.due) };
 }
 function row(t){
   const d = dueInfo(t);
@@ -320,7 +320,6 @@ function project(team){
     <button class="add" data-openlink="${team}" style="margin-top:10px;font-size:13px">+ Add link</button>
   </aside>`;
   return `<div class="split"><div>` + head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
-    + `<div class="legend"><span class="due-over">Overdue</span><span class="due-today">Today</span><span class="due-tom">Tomorrow</span><span class="due-week">This week</span></div>`
     + (body || '<div class="empty">No tasks yet.</div>') + `</div>${side}</div>`;
 }
 function calendar(){
