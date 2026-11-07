@@ -43,7 +43,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .gi .date-tag{position:absolute;top:6px;left:8px;font-size:11px;color:#fff;text-shadow:0 0 3px #000}
 .gi .cap{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;font-size:11px;color:#fff;background:linear-gradient(transparent,#0008);text-align:left}
 .gi .x{position:absolute;top:6px;right:8px;color:#fff;text-shadow:0 0 3px #000;font-size:14px;display:none}.gi:hover .x{display:block}
-.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.row{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .row:hover{background:var(--hover)}.row.static{cursor:default}.row.static:hover{background:none}
 .box{width:16px;height:16px;border:1.5px solid var(--mut);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--bg)}
 .box.done{background:var(--accent);border-color:var(--accent)}
@@ -51,7 +51,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .box.locked{opacity:.4;cursor:default}
 .t{flex:1}.done-t{color:var(--mut);text-decoration:line-through}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.date{color:var(--mut);font-size:12px;min-width:64px;text-align:center;border-radius:10px;padding:2px 8px}
+.date{color:var(--mut);font-size:12px;min-width:72px;text-align:center;border-radius:12px;padding:3px 12px;white-space:nowrap;flex-shrink:0}
 .due-over{background:#fde8e8;color:#d13438}.due-today{background:#fdebd8;color:#c25e00}.due-tom{background:#fdf6d3;color:#9a7b00}.due-week{background:#e3f1fb;color:#1f6fb2}
 [data-theme=dark] .due-over{background:#3d1d1e;color:#ff8a8d}[data-theme=dark] .due-today{background:#3b2a17;color:#ffb366}[data-theme=dark] .due-tom{background:#36311a;color:#f0d36b}[data-theme=dark] .due-week{background:#17293a;color:#7cc0f0}
 .row.over{box-shadow:inset 3px 0 0 #d13438}.row.today{box-shadow:inset 3px 0 0 #e8790c}.row.tom{box-shadow:inset 3px 0 0 #d4ac0d}
