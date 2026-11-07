@@ -172,7 +172,7 @@ const show = id => $(id).classList.add('show'), hide = id => $(id).classList.rem
 const isAdmin = () => me?.role === 'admin';
 const myTeams = () => isAdmin() ? ['fusion','flux'] : me?.team ? [me.team] : [];
 const canManage = team => isAdmin() || (me?.role === 'leader' && me.team === team);
-const canTick = t => canManage(t.team) || t.assignees.includes(me?.id);
+const canTick = t => canManage(t.team) || canJoin(t.team) || t.assignees.includes(me?.id);
 const canJoin = team => !!me?.team && me.team === team; // members: self-assign within own team
 let selfOnly = false;
 
@@ -325,25 +325,23 @@ function openTask(id, team){
   $('tmH').textContent = t ? 'Edit task' : 'New task';
   $('tTitle').value = t?.title || ''; $('tTeam').value = t?.team || team; $('tDue').value = t?.due || '';
   $('tStat').value = t?.status || 'todo'; $('tTeam').disabled = !isAdmin();
-  sel = t ? [...t.assignees] : selfOnly ? [me.id] : []; people();
-  $('tStat').disabled = selfOnly && t && !t.assignees.includes(me.id);
-  $('tDel').style.visibility = t && !selfOnly ? 'visible' : 'hidden';
+  sel = t ? [...t.assignees] : []; people(); $('tStat').disabled = false;
+  $('tDel').style.visibility = t ? 'visible' : 'hidden';
   show('taskM'); $('tTitle').focus();
 }
 function people(){
   const team=$('tTeam').value;
   $('tPeople').innerHTML = profiles.filter(p => p.team===team || sel.includes(p.id))
-    .map(p => `<span class="person ${sel.includes(p.id)?'on':''}" data-pick="${p.id}" style="${selfOnly && p.id!==me.id ? 'pointer-events:none' : ''}">${av(p)}${esc(p.name.split(' ')[0])}</span>`).join('')
+    .map(p => `<span class="person ${sel.includes(p.id)?'on':''}" data-pick="${p.id}">${av(p)}${esc(p.name.split(' ')[0])}</span>`).join('')
     || '<span class="empty">No one on this team yet</span>';
 }
 $('tTeam').onchange = people;
 $('tPeople').onclick = e => { const p=e.target.closest('[data-pick]'); if(!p) return; const id=p.dataset.pick;
-  if (selfOnly && id !== me.id) return;
   sel = sel.includes(id) ? sel.filter(x=>x!==id) : [...sel, id]; people(); };
 $('tSave').onclick = async () => {
   const title=$('tTitle').value.trim(); if(!title) return;
   const t = tasks.find(x => x.id===eT);
-  const o = selfOnly && t ? { assignees:sel, ...(sel.includes(me.id) ? { status:$('tStat').value } : {}) }
+  const o = selfOnly && t ? { assignees:sel, status:$('tStat').value }
                           : { title, team:$('tTeam').value, due:$('tDue').value || null, status:$('tStat').value, assignees:sel };
   const { error } = eT ? await sb.from('tasks').update(o).eq('id', eT) : await sb.from('tasks').insert(o);
   if (error) return toast(error.message);
