@@ -214,7 +214,8 @@ async function start(user){
   $('auth').hidden=true; $('appWrap').hidden=false;
   await load(); me = P(user.id);
   if (!me) { toast('Profile not found. Did you run schema.sql?'); return; }
-  if (me.team) view = me.team;
+  const h = location.hash.slice(1);
+  view = ['fusion','flux','calendar','progress','team','gallery'].includes(h) ? h : (me.team || 'team');
   render();
 }
 async function load(){
@@ -300,7 +301,7 @@ document.addEventListener('click', async e => {
   if (el.dataset.delimg) { e.stopPropagation(); return delImage(+el.dataset.delimg); }
   if (el.dataset.open) return window.open(el.dataset.open, '_blank', 'noopener');
   if (el.dataset.addimg) { $('gTitle').value=''; $('gFile').value=''; $('gLink').value=''; return show('galM'); }
-  if (el.classList.contains('tab')) { view = el.dataset.v; return render(); }
+  if (el.classList.contains('tab')) { view = el.dataset.v; history.replaceState(null, '', '#' + view); return render(); }
   if (el.dataset.cal) { calOff = el.dataset.cal==='0' ? 0 : calOff + +el.dataset.cal; return render(); }
   if (el.dataset.new) return openTask(null, el.dataset.new);
   if (el.dataset.prof) return openProf(el.dataset.prof);
