@@ -308,7 +308,6 @@ function project(team){
   const week = all.filter(t=>t.status!=='done' && t.due && t.due >= today() && t.due <= new Date(Date.now()+7*864e5).toLocaleDateString('en-CA')).length;
   const tl = links.filter(l => l.team===team);
   const side = `<aside class="side">
-    <h2 style="margin-top:0"><span class="dot" style="background:${C[team]}"></span>Stats</h2>
     <div class="stat"><span>Left to do</span><b>${left}</b></div>
     <div class="stat"><span>Done</span><b>${done}</b></div>
     <div class="stat"><span>Due this week</span><b>${week}</b></div>
@@ -549,6 +548,7 @@ $('pSave').onclick = async () => {
     jobs: ($('pRole').value==='member' && p.role==='member') ? [...document.querySelectorAll('#pJobs input:checked')].map(c => c.value) : [] };
   if (isAdmin() && !p.is_owner) o.role = $('pRole').value;
   if (isAdmin() && (!p.is_owner || eP===me.id)) o.team = $('pTeam').value || null;
+  if (o.team !== undefined && p.team && o.team !== p.team && !confirm(`Move ${p.name} out of ${N[p.team]}? They'll be removed from all of that team's tasks.`)) return;
   if (dropPhoto) o.avatar_url = null;
   if (newPhoto) {
     const path = `${me.id}/${Date.now()}-${newPhoto.name.replace(/[^\w.]/g,'')}`;
