@@ -107,3 +107,8 @@ create policy "avatar upload" on storage.objects for insert to authenticated
 create policy "avatar update" on storage.objects for update to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "avatar read" on storage.objects for select using (bucket_id = 'avatars');
+
+-- ===== Update 2 (applied): owner, avatar colour/initials, gallery =====
+-- profiles: + avatar_color, initials (<=3), is_owner (audric.a.tsai@gmail.com)
+-- new sign-ups are always 'member'; only admins change role/team; nobody but the owner edits the owner
+-- images table + public 'gallery' storage bucket (upload: own folder; delete: own or admin)
