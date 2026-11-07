@@ -283,8 +283,13 @@ function project(team){
   const all = tasks.filter(t => t.team===team);
   const g = (s,l) => { const L=all.filter(t=>t.status===s); return L.length ? `<h2>${l}</h2>${L.map(row).join('')}` : ''; };
   const sh = tasks.filter(t => t.team==='shared' && t.status!=='done');
-  const body = (sh.length ? `<h2><span class="dot" style="background:${C.shared}"></span>Shared · everyone</h2>${sh.map(row).join('')}` : '')
-    + g('todo','To do') + g('done','Done');
+  const sec = (label, L) => L.length ? `<h2>${label}</h2>${L.map(row).join('')}` : '';
+  const open = all.filter(t => t.status!=='done');
+  const mine = open.filter(t => t.assignees.includes(me.id));
+  const body = sec('Assigned to me', mine)
+    + sec('Everyone in the team', open.filter(t => !t.assignees.includes(me.id)))
+    + sec(`<span class="dot" style="background:${C.shared}"></span>Shared · all teams`, sh)
+    + sec('Done', all.filter(t => t.status==='done'));
   const done = all.filter(t=>t.status==='done').length, left = all.length - done;
   const overdue = all.filter(t=>t.status!=='done' && t.due && t.due < today()).length;
   const week = all.filter(t=>t.status!=='done' && t.due && t.due >= today() && t.due <= new Date(Date.now()+7*864e5).toLocaleDateString('en-CA')).length;
