@@ -29,6 +29,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .gi{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--tint);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px;text-align:center;padding:8px}
 .gi img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gi .date-tag{position:absolute;top:6px;left:8px;font-size:11px;color:#fff;text-shadow:0 0 3px #000}
 .gi .cap{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;font-size:11px;color:#fff;background:linear-gradient(transparent,#0008);text-align:left}
 .gi .x{position:absolute;top:6px;right:8px;color:#fff;text-shadow:0 0 3px #000;font-size:14px;display:none}.gi:hover .x{display:block}
 .row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
@@ -89,7 +90,6 @@ select:disabled{opacity:.5}
   <div class="logo">Sigma <span>E</span></div>
   <div class="tab" data-v="fusion">Fusion</div>
   <div class="tab" data-v="flux">Flux</div>
-  <div class="tab" data-v="shared">Shared</div>
   <div class="tab" data-v="calendar">Calendar</div>
   <div class="tab" data-v="progress">Progress</div>
   <div class="tab" data-v="team">Team</div>
@@ -141,7 +141,8 @@ select:disabled{opacity:.5}
 
 <div class="modal" id="galM"><div class="mbox">
   <h3 id="gH">Add to gallery</h3>
-  <label>Title (optional)</label><input id="gTitle">
+  <div class="two"><div><label>Title (optional)</label><input id="gTitle"></div><div><label>Date</label><input type="date" id="gDate"></div></div>
+  <div class="sub" style="margin-top:6px">Leave the date empty to use each photo's own date.</div>
   <label>Upload images</label><input type="file" id="gFile" accept="image/*" multiple style="border:0">
   <label>…or paste a Google Drive link</label><input id="gLink" placeholder="https://drive.google.com/...">
   <div class="acts"><button class="link" data-close="galM">Cancel</button><button class="btn" id="gSave">Add</button></div>
@@ -229,7 +230,7 @@ async function start(user){
   if (!me) { toast('Profile not found. Did you run schema.sql?'); return; }
   setTimeout(syncDrive, 1500);
   const h = location.hash.slice(1);
-  view = ['fusion','flux','shared','calendar','progress','team','gallery'].includes(h) ? h : (me.team || 'team');
+  view = ['fusion','flux','calendar','progress','team','gallery'].includes(h) ? h : (me.team || 'team');
   render();
 }
 async function load(){
@@ -263,7 +264,9 @@ function row(t){
 function project(team){
   const all = tasks.filter(t => t.team===team);
   const g = (s,l) => { const L=all.filter(t=>t.status===s); return L.length ? `<h2>${l}</h2>${L.map(row).join('')}` : ''; };
-  const body = g('doing','In progress') + g('todo','To do') + g('done','Done');
+  const sh = tasks.filter(t => t.team==='shared' && t.status!=='done');
+  const body = (sh.length ? `<h2><span class="dot" style="background:${C.shared}"></span>Shared · everyone</h2>${sh.map(row).join('')}` : '')
+    + g('doing','In progress') + g('todo','To do') + g('done','Done');
   return head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
     + (body || '<div class="empty">No tasks yet.</div>');
 }
@@ -301,12 +304,13 @@ function gallery(){
     const id = i.kind==='drive' && driveId(i.url), folder = i.kind==='drive' && /folders\//.test(i.url);
     const can = i.created_by===me.id || isAdmin();
     const inner = folder ? '📁<br>Drive folder' : id ? `<img src="https://drive.google.com/thumbnail?id=${id}&sz=w600" loading="lazy">` : i.kind==='drive' ? 'Drive link' : `<img src="${esc(i.url)}" loading="lazy">`;
-    return `<div class="gi" data-open="${esc(i.url)}">${inner}${i.title?`<div class="cap">${esc(i.title)}</div>`:''}${can?`<span class="x" data-delimg="${i.id}">✕</span>`:''}</div>`;
+    const dt = i.taken_at || (i.created_at||'').slice(0,10);
+    return `<div class="gi" data-open="${esc(i.url)}">${inner}${dt?`<span class="date-tag">${new Date(dt+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>`:''}${i.title?`<div class="cap">${esc(i.title)}</div>`:''}${can?`<span class="x" data-delimg="${i.id}">✕</span>`:''}</div>`;
   };
   const teams = myTeams();
   if (!teams.length) return head('Gallery') + '<div class="empty">An admin needs to add you to a team first.</div>';
   if (!teams.includes(galTeam)) galTeam = teams[0];
-  const list = images.filter(i => i.team === galTeam);
+  const list = images.filter(i => i.team === galTeam).sort((a,b) => (b.taken_at||b.created_at).localeCompare(a.taken_at||a.created_at));
   const switcher = teams.length > 1 ? `<div style="display:flex;gap:18px;margin:-12px 0 20px">${teams.map(t =>
     `<button class="add" data-galteam="${t}" style="color:${t===galTeam?C[t]:'var(--mut)'};font-weight:${t===galTeam?600:400}">${N[t].replace('Sigma E ','')}</button>`).join('')}</div>` : '';
   return head(`<span class="dot" style="display:inline-block;width:10px;height:10px;background:${C[galTeam]}"></span> ${N[galTeam].replace('Sigma E ','')} Gallery`, list.length + ' items', `<button class="add" data-addimg="1">+ Add</button>`)
@@ -321,7 +325,7 @@ document.addEventListener('click', async e => {
   if (el.dataset.galteam) { galTeam = el.dataset.galteam; return render(); }
   if (el.dataset.delimg) { e.stopPropagation(); return delImage(+el.dataset.delimg); }
   if (el.dataset.open) return window.open(el.dataset.open, '_blank', 'noopener');
-  if (el.dataset.addimg) { $('gTitle').value=''; $('gFile').value=''; $('gLink').value=''; $('gH').textContent = `Add to ${N[galTeam].replace('Sigma E ','')} gallery`; return show('galM'); }
+  if (el.dataset.addimg) { $('gTitle').value=''; $('gDate').value=''; $('gFile').value=''; $('gLink').value=''; $('gH').textContent = `Add to ${N[galTeam].replace('Sigma E ','')} gallery`; return show('galM'); }
   if (el.classList.contains('tab')) { view = el.dataset.v; history.replaceState(null, '', '#' + view); return render(); }
   if (el.dataset.cal) { calOff = el.dataset.cal==='0' ? 0 : calOff + +el.dataset.cal; return render(); }
   if (el.dataset.new) return openTask(null, el.dataset.new);
@@ -388,11 +392,12 @@ $('gSave').onclick = async () => {
     const path = `${me.id}/${Date.now()}-${f.name.replace(/[^\w.]/g,'')}`;
     const up = await sb.storage.from('gallery').upload(path, f);
     if (up.error) { toast(up.error.message); continue; }
-    rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam });
+    rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam,
+      taken_at: $('gDate').value || new Date(f.lastModified || Date.now()).toLocaleDateString('en-CA') });
   }
   if (link) {
     if (!/^https:\/\/(drive|docs)\.google\.com\//.test(link)) toast('That is not a Google Drive link');
-    else rows.push({ url: link, title, kind:'drive', team: galTeam });
+    else rows.push({ url: link, title, kind:'drive', team: galTeam, taken_at: $('gDate').value || today() });
   }
   if (rows.length) { const { error } = await sb.from('images').insert(rows); if (error) toast(error.message); }
   $('gSave').disabled = false; $('gSave').textContent = 'Add';
