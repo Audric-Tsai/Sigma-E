@@ -41,6 +41,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .gi{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--tint);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px;text-align:center;padding:8px}
 .gi img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .gi .date-tag{position:absolute;top:6px;left:8px;font-size:11px;color:#fff;text-shadow:0 0 3px #000}
+.gi .file{display:flex;flex-direction:column;align-items:center;gap:6px;word-break:break-all;font-size:12px;color:var(--text)}.gi .file b{font-size:20px;color:var(--accent);letter-spacing:.5px}
 .gi .cap{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;font-size:11px;color:#fff;background:linear-gradient(transparent,#0008);text-align:left}
 .gi .x{position:absolute;top:6px;right:8px;color:#fff;text-shadow:0 0 3px #000;font-size:14px;display:none}.gi:hover .x{display:block}
 .row{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 0;border-bottom:1px solid var(--line);cursor:pointer}
@@ -158,7 +159,7 @@ select:disabled{opacity:.5}
   <h3 id="gH">Add to gallery</h3>
   <div class="two"><div><label>Title (optional)</label><input id="gTitle"></div><div><label>Date</label><input type="date" id="gDate"></div></div>
   <div class="sub" style="margin-top:6px">Leave the date empty to use each photo's own date.</div>
-  <label>Upload images</label><input type="file" id="gFile" accept="image/*" multiple style="border:0">
+  <label>Upload images or files (CAD, PDF, anything, up to 50 MB each)</label><input type="file" id="gFile" multiple style="border:0">
   <label>…or paste a Google Drive link</label><input id="gLink" placeholder="https://drive.google.com/...">
   <div class="acts"><button class="link" data-close="galM">Cancel</button><button class="btn" id="gSave">Add</button></div>
 </div></div>
@@ -366,7 +367,11 @@ function gallery(){
   const item = i => {
     const id = i.kind==='drive' && driveId(i.url), folder = i.kind==='drive' && /folders\//.test(i.url);
     const can = i.created_by===me.id || isAdmin();
-    const inner = folder ? '📁<br>Drive folder' : id ? `<img src="https://drive.google.com/thumbnail?id=${id}&sz=w600" loading="lazy">` : i.kind==='drive' ? 'Drive link' : `<img src="${esc(i.url)}" loading="lazy">`;
+    const fname = decodeURIComponent(i.url.split('/').pop().split('?')[0]).replace(/^\d+-/, '');
+    const ext = (fname.split('.').pop() || '').toLowerCase();
+    const isImg = /^(png|jpe?g|gif|webp|bmp|svg|heic|avif)$/.test(ext);
+    const inner = folder ? '📁<br>Drive folder' : id ? `<img src="https://drive.google.com/thumbnail?id=${id}&sz=w600" loading="lazy">` : i.kind==='drive' ? 'Drive link'
+      : isImg ? `<img src="${esc(i.url)}" loading="lazy">` : `<div class="file"><b>.${esc(ext.toUpperCase())}</b>${esc(fname)}</div>`;
     const dt = i.taken_at || (i.created_at||'').slice(0,10);
     return `<div class="gi" data-open="${esc(i.url)}">${inner}${dt?`<span class="date-tag">${new Date(dt+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>`:''}${i.title?`<div class="cap">${esc(i.title)}</div>`:''}${can?`<span class="x" data-delimg="${i.id}">✕</span>`:''}</div>`;
   };
@@ -396,7 +401,7 @@ document.addEventListener('click', async e => {
   if (el.dataset.day && !e.target.closest('.ev')) { selDay = selDay===el.dataset.day ? null : el.dataset.day; return render(); }
   if (el.dataset.galteam) { galTeam = el.dataset.galteam; return render(); }
   if (el.dataset.delimg) { e.stopPropagation(); return delImage(+el.dataset.delimg); }
-  if (el.dataset.open) return window.open(el.dataset.open, '_blank', 'noopener');
+  if (el.dataset.open) return window.open(el.dataset.open, '_blank', 'noopener');  // non-images download
   if (el.dataset.addimg) { $('gTitle').value=''; $('gDate').value=''; $('gFile').value=''; $('gLink').value=''; $('gH').textContent = `Add to ${N[galTeam].replace('Sigma E ','')} gallery`; return show('galM'); }
   if (el.classList.contains('tab')) { view = el.dataset.v; history.replaceState(null, '', '#' + view); return render(); }
   if (el.dataset.cal) { calOff = el.dataset.cal==='0' ? 0 : calOff + +el.dataset.cal; return render(); }
@@ -471,8 +476,9 @@ $('gSave').onclick = async () => {
   $('gSave').disabled = true; $('gSave').textContent = 'Uploading…';
   const rows = [];
   for (const f of files) {
+    if (f.size > 50*1024*1024) { toast(`${f.name} is over 50 MB`); continue; }
     const path = `${me.id}/${Date.now()}-${f.name.replace(/[^\w.]/g,'')}`;
-    const up = await sb.storage.from('gallery').upload(path, f);
+    const up = await sb.storage.from('gallery').upload(path, f, { contentType: f.type || 'application/octet-stream' });
     if (up.error) { toast(up.error.message); continue; }
     rows.push({ url: sb.storage.from('gallery').getPublicUrl(path).data.publicUrl, title, kind:'upload', team: galTeam,
       taken_at: $('gDate').value || new Date(f.lastModified || Date.now()).toLocaleDateString('en-CA') });
