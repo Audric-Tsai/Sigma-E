@@ -50,7 +50,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .box.done{background:var(--accent);border-color:var(--accent)}
 .box.doing-unused{border-color:var(--accent);background:linear-gradient(var(--accent),var(--accent)) center/6px 6px no-repeat}
 .box.locked{opacity:.4;cursor:default}
-.t{flex:1}.done-t{color:var(--mut);text-decoration:line-through}
+.t{flex:1}.by{display:block;font-size:11px;color:var(--mut);margin-top:2px;white-space:normal}.done-t{color:var(--mut);text-decoration:line-through}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .date{color:var(--mut);font-size:12px;min-width:72px;text-align:center;border-radius:12px;padding:3px 12px;white-space:nowrap;flex-shrink:0}
 .due-over{background:#fde8e8;color:#d13438}.due-today{background:#fdebd8;color:#c25e00}.due-tom{background:#fdf6d3;color:#9a7b00}.due-week{background:#e3f1fb;color:#1f6fb2}
@@ -116,7 +116,7 @@ select:disabled{opacity:.5}
 </div>
 
 <div class="modal" id="taskM"><div class="mbox">
-  <h3 id="tmH">New task</h3>
+  <h3 id="tmH">New task</h3><div class="sub" id="tmBy" style="margin:-10px 0 6px"></div>
   <label>Description</label><textarea id="tTitle" rows="3" placeholder="What needs doing?"></textarea>
   <div class="two">
     <div><label>Team</label><select id="tTeam"><option value="fusion">Fusion</option><option value="flux">Flux</option><option value="shared">Shared</option></select></div>
@@ -278,6 +278,7 @@ function render(){
 }
 const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btn}</div>`;
 
+const byLine = t => { const p = P(t.created_by); return p ? `<span class="by">Assigned by ${esc(p.name)}</span>` : ''; };
 const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
 function dueInfo(t){
   if (t.status==='done') return { cls:'', row:'', label: fmt(t.due) };
@@ -291,7 +292,7 @@ function row(t){
   const d = dueInfo(t);
   return `<div class="row ${d.row}" data-task="${t.id}">
     <span class="box ${t.status} ${canTick(t)?'':'locked'}" data-tick="${t.id}">${t.status==='done'?'✓':''}</span>
-    <span class="t ${t.status==='done'?'done-t':''}">${esc(t.title)}</span>
+    <span class="t"><span class="${t.status==='done'?'done-t':''}">${esc(t.title)}</span>${byLine(t)}</span>
     ${stack(t.assignees)}<span class="date ${d.cls}">${d.label}</span></div>`;
 }
 function project(team){
@@ -334,7 +335,7 @@ function calendar(){
     <h2 style="margin-top:0">${new Date(selDay+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</h2>
     ${dayTasks.map(t => `<div class="dayitem" data-task="${t.id}">
       <span class="proj" style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span class="dot" style="background:${C[t.team]}"></span>${N[t.team]}${t.status==='done'?' · Done ✓':''}</span>
-      <span class="t ${t.status==='done'?'done-t':''}">${esc(t.title)}</span>
+      <span class="t"><span class="${t.status==='done'?'done-t':''}">${esc(t.title)}</span>${byLine(t)}</span>
       <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)">${stack(t.assignees)} ${t.assignees.map(a=>esc(P(a)?.name?.split(' ')[0]||'')).filter(Boolean).join(', ')}</span>
     </div>`).join('') || '<div class="empty">Nothing due this day.</div>'}
     <button class="add" data-closeday="1" style="margin-top:12px;font-size:13px">Close</button>
@@ -426,6 +427,7 @@ function openTask(id, team){
   selfOnly = !canManage(t?.team || team);
   ['tTitle','tDue'].forEach(k => $(k).disabled = selfOnly && !!t);
   $('tmH').textContent = t ? 'Edit task' : 'New task';
+  $('tmBy').textContent = t && P(t.created_by) ? 'Assigned by ' + P(t.created_by).name : '';
   $('tTitle').value = t?.title || ''; $('tTeam').value = t?.team || team; $('tDue').value = t?.due || '';
   [...$('tTeam').options].forEach(o => o.hidden = !isAdmin() && o.value!=='shared' && o.value!==me.team);
   $('tTeam').disabled = !!t && !isAdmin() && !canManage(t.team);
