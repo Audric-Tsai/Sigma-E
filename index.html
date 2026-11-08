@@ -380,7 +380,7 @@ function calendar(){
     c += `<div class="d ${x.getMonth()!==b.getMonth()?'o':''} ${k===today()?'today':''} ${k===selDay?'sel':''}" data-day="${k}"><span>${x.getDate()}</span>${
       tasks.filter(t=>t.due===k).map(t=>`<div class="ev ${t.status==='done'?'done':''}" data-task="${t.id}"><span class="dot" style="background:${C[t.team]}"></span>${esc(t.title)}</div>`).join('')}</div>`; }
   const dayTasks = selDay ? tasks.filter(t => t.due===selDay) : [];
-  const panel = !selDay ? `<aside class="side"><div class="empty" style="padding-top:0">Click a day to see its tasks.</div></aside>` : `<aside class="side">
+  const panel = !selDay ? '' : `<aside class="side">
     <h2 style="margin-top:0">${new Date(selDay+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</h2>
     ${dayTasks.map(t => `<div class="dayitem" data-task="${t.id}">
       <span class="proj" style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span class="dot" style="background:${C[t.team]}"></span>${N[t.team]}${t.status==='done'?' · Done ✓':''}</span>
@@ -391,7 +391,7 @@ function calendar(){
   </aside>`;
   return head(b.toLocaleDateString('en-GB',{month:'long',year:'numeric'}), '',
     `<div style="display:flex;gap:14px"><button class="add" data-cal="-1">←</button><button class="add" data-cal="0">Today</button><button class="add" data-cal="1">→</button></div>`)
-    + `<div class="calsplit"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
+    + `<div class="${selDay?'calsplit':''}"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
 }
 function progress(){
   const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:170px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span style="min-width:60px;text-align:right;color:var(--mut);font-size:13px">${l.filter(t=>t.status==='done').length}/${l.length}</span></div>`;
