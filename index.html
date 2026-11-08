@@ -29,6 +29,10 @@ aside.side{position:sticky;top:20px}
 .calsplit{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px}.calsplit aside.side{position:static;height:var(--calh,700px);overflow-y:auto;padding-right:6px;scrollbar-width:thin}
 @media(max-width:860px){.calsplit{grid-template-columns:1fr}}
 body{overflow-x:hidden}
+.daypanel{position:fixed;top:57px;right:0;bottom:0;width:380px;max-width:100vw;background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0000000f;overflow-y:auto;padding:24px;z-index:5;animation:slidein .18s ease-out}
+@keyframes slidein{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+@media(max-width:720px){.daypanel{top:auto;width:100%;height:70vh;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;animation:none}}
+.cal .d{padding:6px 8px !important}
 .dayitem{padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.dayitem .t{display:block;margin:4px 0 6px}
 input[type=color]{width:26px;height:26px;border:0;padding:0;background:none;cursor:pointer;border-radius:50%}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px}
@@ -380,7 +384,7 @@ function calendar(){
     c += `<div class="d ${x.getMonth()!==b.getMonth()?'o':''} ${k===today()?'today':''} ${k===selDay?'sel':''}" data-day="${k}"><span>${x.getDate()}</span>${
       tasks.filter(t=>t.due===k).map(t=>`<div class="ev ${t.status==='done'?'done':''}" data-task="${t.id}"><span class="dot" style="background:${C[t.team]}"></span>${esc(t.title)}</div>`).join('')}</div>`; }
   const dayTasks = selDay ? tasks.filter(t => t.due===selDay) : [];
-  const panel = !selDay ? '' : `<aside class="side">
+  const panel = !selDay ? '' : `<aside class="daypanel">
     <h2 style="margin-top:0">${new Date(selDay+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</h2>
     ${dayTasks.map(t => `<div class="dayitem" data-task="${t.id}">
       <span class="proj" style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span class="dot" style="background:${C[t.team]}"></span>${N[t.team]}${t.status==='done'?' · Done ✓':''}</span>
@@ -391,7 +395,7 @@ function calendar(){
   </aside>`;
   return head(b.toLocaleDateString('en-GB',{month:'long',year:'numeric'}), '',
     `<div style="display:flex;gap:14px"><button class="add" data-cal="-1">←</button><button class="add" data-cal="0">Today</button><button class="add" data-cal="1">→</button></div>`)
-    + `<div class="${selDay?'calsplit':''}"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
+    + `<div><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
 }
 function progress(){
   const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:170px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span style="min-width:60px;text-align:right;color:var(--mut);font-size:13px">${l.filter(t=>t.status==='done').length}/${l.length}</span></div>`;
@@ -436,6 +440,9 @@ function gallery(){
 }
 
 // ===== Clicks =====
+document.addEventListener('click', e => {
+  if (view==='calendar' && selDay && !e.target.closest('.cal,.daypanel,.modal')) { selDay = null; render(); }
+}, true);
 document.addEventListener('click', async e => {
   if (e.target.closest('[data-stop]') && !e.target.closest('[data-rmatt]')) return;
   const el = e.target.closest('[data-filter],[data-openlink],[data-closeday],[data-addlink],[data-dellink],[data-day],[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
