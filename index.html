@@ -56,6 +56,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .due-over{background:#fde8e8;color:#d13438}.due-today{background:#fdebd8;color:#c25e00}.due-tom{background:#fdf6d3;color:#9a7b00}.due-week{background:#e3f1fb;color:#1f6fb2}
 [data-theme=dark] .due-over{background:#3d1d1e;color:#ff8a8d}[data-theme=dark] .due-today{background:#3b2a17;color:#ffb366}[data-theme=dark] .due-tom{background:#36311a;color:#f0d36b}[data-theme=dark] .due-week{background:#17293a;color:#7cc0f0}
 .row.over{box-shadow:inset 3px 0 0 #d13438}.row.today{box-shadow:inset 3px 0 0 #e8790c}.row.tom{box-shadow:inset 3px 0 0 #d4ac0d}
+.pills{display:flex;gap:6px;margin:-12px 0 4px}.pill{font-size:12px;padding:4px 12px;border-radius:14px;border:1px solid var(--line);background:none;color:var(--mut);cursor:pointer;font:inherit;font-size:12px}.pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .legend{display:flex;gap:10px;flex-wrap:wrap;margin:-16px 0 8px;font-size:11px}.legend span{border-radius:10px;padding:1px 8px}
 .role{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:1px 8px}
 .av{border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;flex-shrink:0;border:1.5px solid var(--bg)}
@@ -186,7 +187,7 @@ const SUB = { fusion:'FTC #38620', flux:'FTC #38621', shared:'Open to everyone, 
 const ROLE = { admin:'Admin', leader:'Leader', member:'Member' };
 const JOB = { coder:'Coder', social:'Social Media', builder:'Builder' };
 
-let atts = [], newFiles = [];
+let atts = [], newFiles = [], taskFilter = 'all';
 let galTeam = null, links = [], selDay = null, linkTeam = null;
 let images = [], newColor = null, dropPhoto = false;
 let profiles = [], tasks = [], me = null, view = 'fusion', calOff = 0;
@@ -282,7 +283,8 @@ function render(){
 const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btn}</div>`;
 
 const attChips = (list, removable) => (list||[]).map((a,i) => `<a class="att" href="${esc(a.url)}" target="_blank" rel="noopener" download data-stop="1">📎 ${esc(a.name)}${removable?`<span class="x" data-rmatt="${i}">✕</span>`:''}</a>`).join('');
-const byLine = t => { const p = P(t.created_by); return p ? `<span class="by">Assigned by ${esc(p.name)}</span>` : ''; };
+const byLine = t => { const p = P(t.created_by), d = t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+  return (p || d) ? `<span class="by">Assigned${p ? ' by ' + esc(p.name) : ''}${d ? ' · ' + d : ''}</span>` : ''; };
 const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
 function dueInfo(t){
   if (t.status==='done') return { cls:'', row:'', label: fmt(t.due) };
@@ -305,11 +307,14 @@ function project(team){
   const sh = tasks.filter(t => t.team==='shared' && t.status!=='done');
   const sec = (label, L) => L.length ? `<h2>${label}</h2>${L.map(row).join('')}` : '';
   const open = all.filter(t => t.status!=='done');
-  const mine = open.filter(t => t.assignees.includes(me.id));
-  const body = sec('Assigned to me', mine)
-    + sec('Everyone in the team', open.filter(t => !t.assignees.includes(me.id)))
-    + sec(`<span class="dot" style="background:${C.shared}"></span>Shared · all teams`, sh)
-    + sec('Done', all.filter(t => t.status==='done'));
+  const isMine = t => t.assignees.includes(me.id);
+  const mine = open.filter(isMine);
+  const body = taskFilter === 'mine'
+    ? sec('Assigned to me', mine) + sec(`<span class="dot" style="background:${C.shared}"></span>Shared · all teams`, sh.filter(isMine)) + sec('Done', all.filter(t => t.status==='done' && isMine(t)))
+    : sec('Assigned to me', mine)
+      + sec('Everyone in the team', open.filter(t => !isMine(t)))
+      + sec(`<span class="dot" style="background:${C.shared}"></span>Shared · all teams`, sh)
+      + sec('Done', all.filter(t => t.status==='done'));
   const done = all.filter(t=>t.status==='done').length, left = all.length - done;
   const overdue = all.filter(t=>t.status!=='done' && t.due && t.due < today()).length;
   const week = all.filter(t=>t.status!=='done' && t.due && t.due >= today() && t.due <= new Date(Date.now()+7*864e5).toLocaleDateString('en-CA')).length;
@@ -326,7 +331,8 @@ function project(team){
     <button class="add" data-openlink="${team}" style="margin-top:10px;font-size:13px">+ Add link</button>
   </aside>`;
   return `<div class="split"><div>` + head(N[team], SUB[team], canManage(team) || canJoin(team) ? `<button class="add" data-new="${team}">+ New task</button>` : '')
-    + (body || '<div class="empty">No tasks yet.</div>') + `</div>${side}</div>`;
+    + `<div class="pills"><button class="pill ${taskFilter==='all'?'on':''}" data-filter="all">All</button><button class="pill ${taskFilter==='mine'?'on':''}" data-filter="mine">My tasks</button></div>`
+    + (body || `<div class="empty">${taskFilter==='mine' ? 'Nothing assigned to you.' : 'No tasks yet.'}</div>`) + `</div>${side}</div>`;
 }
 function calendar(){
   const now=new Date(), b=new Date(now.getFullYear(), now.getMonth()+calOff, 1), s=new Date(b); s.setDate(1-((b.getDay()+6)%7));
@@ -393,9 +399,10 @@ function gallery(){
 // ===== Clicks =====
 document.addEventListener('click', async e => {
   if (e.target.closest('[data-stop]') && !e.target.closest('[data-rmatt]')) return;
-  const el = e.target.closest('[data-openlink],[data-closeday],[data-addlink],[data-dellink],[data-day],[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
+  const el = e.target.closest('[data-filter],[data-openlink],[data-closeday],[data-addlink],[data-dellink],[data-day],[data-galteam],[data-delimg],[data-open],[data-addimg],[data-tick],[data-task],[data-new],[data-prof],[data-cal],[data-close],.tab');
   if (!el) return;
   if (el.dataset.close) return hide(el.dataset.close);
+  if (el.dataset.filter) { taskFilter = el.dataset.filter; return render(); }
   if (el.dataset.closeday) { selDay = null; return render(); }
   if (el.dataset.openlink) { linkTeam = el.dataset.openlink; $('lName').value=''; $('lUrl').value=''; show('linkM'); return $('lName').focus(); }
   if (el.dataset.dellink) {
