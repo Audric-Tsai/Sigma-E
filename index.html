@@ -26,6 +26,9 @@ aside.side{position:sticky;top:20px}
 .mini{width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text);padding:6px 0;font:inherit;font-size:13px;outline:0;margin-top:4px}
 .cal .d{cursor:pointer}.cal .d:hover{background:var(--hover)}.cal .d.sel{background:var(--tint)}
 .ev.done{text-decoration:line-through;color:var(--mut)}
+.calsplit{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px}.calsplit aside.side{position:static;height:var(--calh,700px);overflow-y:auto;padding-right:6px;scrollbar-width:thin}
+@media(max-width:860px){.calsplit{grid-template-columns:1fr}}
+body{overflow-x:hidden}
 .dayitem{padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.dayitem .t{display:block;margin:4px 0 6px}
 input[type=color]{width:26px;height:26px;border:0;padding:0;background:none;cursor:pointer;border-radius:50%}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px}
@@ -66,7 +69,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .empty{color:var(--mut);padding:10px 0}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .cal .h{font-size:11px;color:var(--mut);padding:6px 4px}
-.cal .d{min-height:78px;padding:4px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
+.cal .d{height:112px;overflow-y:auto;scrollbar-width:thin;padding:4px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
 .cal .d.o{opacity:.35}.cal .d.today>span{color:var(--accent);font-weight:600}
 .ev{color:var(--text);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;display:flex;align-items:center;gap:4px}
 .modal{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9}.modal.show{display:flex}
@@ -279,6 +282,7 @@ function render(){
   document.querySelectorAll('.tab').forEach(n => { n.classList.toggle('on', n.dataset.v===view);
     if (['fusion','flux'].includes(n.dataset.v)) n.hidden = !myTeams().includes(n.dataset.v); });
   $('meBtn').innerHTML = av(me, 28);
+  setTimeout(() => { const c = document.querySelector('.cal'); if (c) document.documentElement.style.setProperty('--calh', c.offsetHeight + 'px'); });
   $('app').innerHTML = view==='calendar' ? calendar() : view==='progress' ? progress() : view==='team' ? team() : view==='gallery' ? gallery() : project(view);
 }
 const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btn}</div>`;
@@ -357,7 +361,7 @@ function calendar(){
   </aside>` : '';
   return head(b.toLocaleDateString('en-GB',{month:'long',year:'numeric'}), '',
     `<div style="display:flex;gap:14px"><button class="add" data-cal="-1">←</button><button class="add" data-cal="0">Today</button><button class="add" data-cal="1">→</button></div>`)
-    + `<div class="${selDay?'split':''}"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
+    + `<div class="${selDay?'calsplit':''}"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
 }
 function progress(){
   const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:170px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span class="date">${pct(l)}%</span></div>`;
