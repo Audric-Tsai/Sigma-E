@@ -269,7 +269,7 @@ async function load(){
     sb.from('links').select('*').order('created_at')
   ]).then(r => { images = r[2].data || []; links = r[3].data || []; return r; });
   if (p.error || t.error) toast((p.error||t.error).message);
-  profiles = p.data || []; tasks = t.data || [];
+  profiles = p.data || []; tasks = (t.data || []).sort(byDue);
   if (me) me = P(me.id);
 }
 
@@ -288,6 +288,7 @@ const byLine = t => { const p = P(t.created_by), d = t.created_at ? (x => x.toLo
   const fmtT = v => (x => x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) + ', ' + x.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}))(new Date(v));
   const c = t.status==='done' && t.completed_at ? `<span class="by" style="color:var(--accent)">✓ Done${P(t.completed_by) ? ' by ' + esc(P(t.completed_by).name) : ''} · ${fmtT(t.completed_at)}</span>` : '';
   return ((p || d) ? `<span class="by">Assigned${p ? ' by ' + esc(p.name) : ''}${d ? ' · ' + d : ''}</span>` : '') + c; };
+const byDue = (a,b) => (a.due||'9999') < (b.due||'9999') ? -1 : (a.due||'9999') > (b.due||'9999') ? 1 : (a.position??0) - (b.position??0);
 const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
 function dueInfo(t){
   if (t.status==='done') return { cls:'', row:'', label: fmt(t.due) };
@@ -442,22 +443,23 @@ let dragId = null;
 document.addEventListener('dragstart', e => { const r = e.target.closest?.('[data-drag]'); if (!r) return;
   dragId = +r.dataset.drag; r.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
 document.addEventListener('dragend', () => { document.querySelectorAll('.dragging,.drop-before,.drop-after').forEach(x => x.classList.remove('dragging','drop-before','drop-after')); dragId = null; });
-document.addEventListener('dragover', e => { const r = e.target.closest?.('.dlist .row'); if (!r || dragId===null) return;
+const sameDay = r => (tasks.find(t => t.id===+r.dataset.task)?.due || null) === (tasks.find(t => t.id===dragId)?.due || null);
+document.addEventListener('dragover', e => { const r = e.target.closest?.('.dlist .row'); if (!r || dragId===null || !sameDay(r)) return;
   e.preventDefault(); document.querySelectorAll('.drop-before,.drop-after').forEach(x => x.classList.remove('drop-before','drop-after'));
   const b = r.getBoundingClientRect(); r.classList.add(e.clientY < b.top + b.height/2 ? 'drop-before' : 'drop-after'); });
 document.addEventListener('drop', async e => {
-  const r = e.target.closest?.('.dlist .row'); if (!r || dragId===null) return; e.preventDefault();
+  const r = e.target.closest?.('.dlist .row'); if (!r || dragId===null || !sameDay(r)) return; e.preventDefault();
   const before = r.classList.contains('drop-before'), targetId = +r.dataset.task;
-  const ids = [...r.parentElement.querySelectorAll('.row')].map(x => +x.dataset.task).filter(id => id !== dragId);
+  const ids = [...r.parentElement.querySelectorAll('.row')].map(x => +x.dataset.task).filter(id => id !== dragId && sameDay({ dataset:{ task:id } }));
   if (targetId === dragId) return;
   let i = ids.indexOf(targetId) + (before ? 0 : 1);
   const pos = id => tasks.find(t => t.id===id)?.position ?? 0;
   const prev = i > 0 ? pos(ids[i-1]) : null, next = i < ids.length ? pos(ids[i]) : null;
   const np = prev===null && next===null ? 0 : prev===null ? next - 1000 : next===null ? prev + 1000 : (prev + next) / 2;
   const t = tasks.find(x => x.id===dragId); const old = t.position; t.position = np;
-  tasks.sort((a,b) => (a.position??0) - (b.position??0)); render();
+  tasks.sort(byDue); render();
   const { error } = await sb.from('tasks').update({ position: np }).eq('id', t.id);
-  if (error) { t.position = old; tasks.sort((a,b) => (a.position??0) - (b.position??0)); render(); toast(error.message); }
+  if (error) { t.position = old; tasks.sort(byDue); render(); toast(error.message); }
 });
 
 // ===== Task modal =====
