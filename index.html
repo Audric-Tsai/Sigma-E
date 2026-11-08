@@ -283,7 +283,7 @@ function render(){
 const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div class="sub">${s}</div>`:''}</div>${btn}</div>`;
 
 const attChips = (list, removable) => (list||[]).map((a,i) => `<a class="att" href="${esc(a.url)}" target="_blank" rel="noopener" download data-stop="1">📎 ${esc(a.name)}${removable?`<span class="x" data-rmatt="${i}">✕</span>`:''}</a>`).join('');
-const byLine = t => { const p = P(t.created_by), d = t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+const byLine = t => { const p = P(t.created_by), d = t.created_at ? (x => x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) + ', ' + x.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}))(new Date(t.created_at)) : '';
   return (p || d) ? `<span class="by">Assigned${p ? ' by ' + esc(p.name) : ''}${d ? ' · ' + d : ''}</span>` : ''; };
 const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
 function dueInfo(t){
