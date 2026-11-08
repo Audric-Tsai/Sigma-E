@@ -57,6 +57,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 [data-theme=dark] .due-over{background:#3d1d1e;color:#ff8a8d}[data-theme=dark] .due-today{background:#3b2a17;color:#ffb366}[data-theme=dark] .due-tom{background:#36311a;color:#f0d36b}[data-theme=dark] .due-week{background:#17293a;color:#7cc0f0}
 .row.over{box-shadow:inset 3px 0 0 #d13438}.row.today{box-shadow:inset 3px 0 0 #e8790c}.row.tom{box-shadow:inset 3px 0 0 #d4ac0d}
 .pills{display:flex;gap:6px;margin:-12px 0 4px}.pill{font-size:12px;padding:4px 12px;border-radius:14px;border:1px solid var(--line);background:none;color:var(--mut);cursor:pointer;font:inherit;font-size:12px}.pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.row.dragging{opacity:.4}.row.drop-before{box-shadow:inset 0 2px 0 var(--accent)}.row.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}.row[draggable=true]{cursor:grab}
 .legend{display:flex;gap:10px;flex-wrap:wrap;margin:-16px 0 8px;font-size:11px}.legend span{border-radius:10px;padding:1px 8px}
 .role{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:1px 8px}
 .av{border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;flex-shrink:0;border:1.5px solid var(--bg)}
@@ -263,7 +264,7 @@ async function start(user){
 async function load(){
   const [p, t] = await Promise.all([
     sb.from('profiles').select('*').order('name'),
-    sb.from('tasks').select('*').order('due', { nullsFirst:false }),
+    sb.from('tasks').select('*').order('position').order('due', { nullsFirst:false }),
     sb.from('images').select('*').order('created_at', { ascending:false }),
     sb.from('links').select('*').order('created_at')
   ]).then(r => { images = r[2].data || []; links = r[3].data || []; return r; });
@@ -296,7 +297,8 @@ function dueInfo(t){
 }
 function row(t){
   const d = dueInfo(t);
-  return `<div class="row ${d.row}" data-task="${t.id}">
+  const drag = canManage(t.team) || canJoin(t.team) || t.team==='shared';
+  return `<div class="row ${d.row}" data-task="${t.id}" ${drag ? `draggable="true" data-drag="${t.id}"` : ''}>
     <span class="box ${t.status} ${canTick(t)?'':'locked'}" data-tick="${t.id}">${t.status==='done'?'✓':''}</span>
     <span class="t"><span class="${t.status==='done'?'done-t':''}">${esc(t.title)}</span>${byLine(t)}${t.attachments?.length?`<span class="atts">${attChips(t.attachments)}</span>`:''}</span>
     ${stack(t.assignees)}<span class="date ${d.cls}">${d.label}</span></div>`;
@@ -305,7 +307,7 @@ function project(team){
   const all = tasks.filter(t => t.team===team);
   const g = (s,l) => { const L=all.filter(t=>t.status===s); return L.length ? `<h2>${l}</h2>${L.map(row).join('')}` : ''; };
   const sh = tasks.filter(t => t.team==='shared' && t.status!=='done');
-  const sec = (label, L) => L.length ? `<h2>${label}</h2>${L.map(row).join('')}` : '';
+  const sec = (label, L) => L.length ? `<h2>${label}</h2><div class="dlist">${L.map(row).join('')}</div>` : '';
   const open = all.filter(t => t.status!=='done');
   const isMine = t => t.assignees.includes(me.id);
   const mine = open.filter(isMine);
@@ -432,6 +434,29 @@ document.addEventListener('click', async e => {
 $('gear').onclick = () => show('setM');
 $('meBtn').onclick = () => openProf(me.id);
 document.querySelectorAll('.modal').forEach(m => m.onclick = e => { if (e.target===m) hide(m.id); });
+
+// ===== Drag to reorder =====
+let dragId = null;
+document.addEventListener('dragstart', e => { const r = e.target.closest?.('[data-drag]'); if (!r) return;
+  dragId = +r.dataset.drag; r.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+document.addEventListener('dragend', () => { document.querySelectorAll('.dragging,.drop-before,.drop-after').forEach(x => x.classList.remove('dragging','drop-before','drop-after')); dragId = null; });
+document.addEventListener('dragover', e => { const r = e.target.closest?.('.dlist .row'); if (!r || dragId===null) return;
+  e.preventDefault(); document.querySelectorAll('.drop-before,.drop-after').forEach(x => x.classList.remove('drop-before','drop-after'));
+  const b = r.getBoundingClientRect(); r.classList.add(e.clientY < b.top + b.height/2 ? 'drop-before' : 'drop-after'); });
+document.addEventListener('drop', async e => {
+  const r = e.target.closest?.('.dlist .row'); if (!r || dragId===null) return; e.preventDefault();
+  const before = r.classList.contains('drop-before'), targetId = +r.dataset.task;
+  const ids = [...r.parentElement.querySelectorAll('.row')].map(x => +x.dataset.task).filter(id => id !== dragId);
+  if (targetId === dragId) return;
+  let i = ids.indexOf(targetId) + (before ? 0 : 1);
+  const pos = id => tasks.find(t => t.id===id)?.position ?? 0;
+  const prev = i > 0 ? pos(ids[i-1]) : null, next = i < ids.length ? pos(ids[i]) : null;
+  const np = prev===null && next===null ? 0 : prev===null ? next - 1000 : next===null ? prev + 1000 : (prev + next) / 2;
+  const t = tasks.find(x => x.id===dragId); const old = t.position; t.position = np;
+  tasks.sort((a,b) => (a.position??0) - (b.position??0)); render();
+  const { error } = await sb.from('tasks').update({ position: np }).eq('id', t.id);
+  if (error) { t.position = old; tasks.sort((a,b) => (a.position??0) - (b.position??0)); render(); toast(error.message); }
+});
 
 // ===== Task modal =====
 function openTask(id, team){
