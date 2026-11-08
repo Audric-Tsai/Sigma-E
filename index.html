@@ -69,7 +69,7 @@ h2{font-size:12px;font-weight:600;color:var(--mut);margin:28px 0 6px;display:fle
 .empty{color:var(--mut);padding:10px 0}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .cal .h{font-size:11px;color:var(--mut);padding:6px 4px}
-.cal .d{height:112px;overflow-y:auto;scrollbar-width:thin;padding:4px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
+.cal .d{height:112px;overflow-y:auto;scrollbar-width:none;padding:4px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
 .cal .d.o{opacity:.35}.cal .d.today>span{color:var(--accent);font-weight:600}
 .ev{color:var(--text);font-size:11px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;display:flex;align-items:center;gap:4px}
 .modal{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:9}.modal.show{display:flex}
@@ -90,6 +90,36 @@ select:disabled{opacity:.5}
 #auth{max-width:320px;margin:14vh auto;padding:0 24px}
 #auth h1{margin-bottom:6px}.err{color:#e5484d;font-size:13px;margin-top:12px;min-height:18px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px;display:none}
+
+.cal .d::-webkit-scrollbar{display:none}
+.head{flex-wrap:wrap;gap:10px}
+.row{flex-wrap:nowrap}
+@media(max-width:860px){
+  .calsplit aside.side{height:auto;max-height:70vh}
+}
+@media(max-width:720px){
+  nav{padding:0 14px;gap:16px}
+  .logo{margin-right:4px}
+  main{padding:24px 14px 60px}
+  h1{font-size:20px}
+  .row{flex-wrap:wrap;row-gap:6px}
+  .row .t{flex:1 1 calc(100% - 40px)}
+  .row .stack{margin-left:28px}
+  .row .date{margin-left:auto}
+  .cal .d{height:72px;padding:3px;font-size:11px}
+  .ev{font-size:10px;gap:3px}
+  .gal{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+  .two{grid-template-columns:1fr;gap:0}
+  .mbox{padding:18px;width:100%}
+  .modal{align-items:flex-end}
+  .modal .mbox{border-radius:14px 14px 0 0;max-height:88vh}
+  #auth{margin:8vh auto}
+}
+@media(max-width:420px){
+  .cal .d{height:60px}
+  .ev span.dot+*{display:none}
+  .pills{flex-wrap:wrap}
+}
 </style>
 </head>
 <body>
@@ -350,7 +380,7 @@ function calendar(){
     c += `<div class="d ${x.getMonth()!==b.getMonth()?'o':''} ${k===today()?'today':''} ${k===selDay?'sel':''}" data-day="${k}"><span>${x.getDate()}</span>${
       tasks.filter(t=>t.due===k).map(t=>`<div class="ev ${t.status==='done'?'done':''}" data-task="${t.id}"><span class="dot" style="background:${C[t.team]}"></span>${esc(t.title)}</div>`).join('')}</div>`; }
   const dayTasks = selDay ? tasks.filter(t => t.due===selDay) : [];
-  const panel = selDay ? `<aside class="side">
+  const panel = !selDay ? `<aside class="side"><div class="empty" style="padding-top:0">Click a day to see its tasks.</div></aside>` : `<aside class="side">
     <h2 style="margin-top:0">${new Date(selDay+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</h2>
     ${dayTasks.map(t => `<div class="dayitem" data-task="${t.id}">
       <span class="proj" style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span class="dot" style="background:${C[t.team]}"></span>${N[t.team]}${t.status==='done'?' · Done ✓':''}</span>
@@ -358,10 +388,10 @@ function calendar(){
       <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)">${stack(t.assignees)} ${t.assignees.map(a=>esc(P(a)?.name?.split(' ')[0]||'')).filter(Boolean).join(', ')}</span>
     </div>`).join('') || '<div class="empty">Nothing due this day.</div>'}
     <button class="add" data-closeday="1" style="margin-top:12px;font-size:13px">Close</button>
-  </aside>` : '';
+  </aside>`;
   return head(b.toLocaleDateString('en-GB',{month:'long',year:'numeric'}), '',
     `<div style="display:flex;gap:14px"><button class="add" data-cal="-1">←</button><button class="add" data-cal="0">Today</button><button class="add" data-cal="1">→</button></div>`)
-    + `<div class="${selDay?'calsplit':''}"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
+    + `<div class="calsplit"><div class="cal">${['M','T','W','T','F','S','S'].map(h=>`<div class="h">${h}</div>`).join('')}${c}</div>${panel}</div>`;
 }
 function progress(){
   const bar = (lead, name, l) => `<div class="row static">${lead}<span style="width:170px">${name}</span><div class="bar"><div style="width:${pct(l)}%"></div></div><span style="min-width:60px;text-align:right;color:var(--mut);font-size:13px">${l.filter(t=>t.status==='done').length}/${l.length}</span></div>`;
