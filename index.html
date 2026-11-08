@@ -285,7 +285,9 @@ const head = (t, s, btn='') => `<div class="head"><div><h1>${t}</h1>${s?`<div cl
 
 const attChips = (list, removable) => (list||[]).map((a,i) => `<a class="att" href="${esc(a.url)}" target="_blank" rel="noopener" download data-stop="1">📎 ${esc(a.name)}${removable?`<span class="x" data-rmatt="${i}">✕</span>`:''}</a>`).join('');
 const byLine = t => { const p = P(t.created_by), d = t.created_at ? (x => x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) + ', ' + x.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}))(new Date(t.created_at)) : '';
-  return (p || d) ? `<span class="by">Assigned${p ? ' by ' + esc(p.name) : ''}${d ? ' · ' + d : ''}</span>` : ''; };
+  const fmtT = v => (x => x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) + ', ' + x.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}))(new Date(v));
+  const c = t.status==='done' && t.completed_at ? `<span class="by" style="color:var(--accent)">✓ Done${P(t.completed_by) ? ' by ' + esc(P(t.completed_by).name) : ''} · ${fmtT(t.completed_at)}</span>` : '';
+  return ((p || d) ? `<span class="by">Assigned${p ? ' by ' + esc(p.name) : ''}${d ? ' · ' + d : ''}</span>` : '') + c; };
 const addDays = n => new Date(Date.now()+n*864e5).toLocaleDateString('en-CA');
 function dueInfo(t){
   if (t.status==='done') return { cls:'', row:'', label: fmt(t.due) };
@@ -427,7 +429,7 @@ document.addEventListener('click', async e => {
     const status = t.status==='done' ? 'todo' : 'done';
     const { error } = await sb.from('tasks').update({ status }).eq('id', t.id);
     if (error) return toast(error.message);
-    t.status = status; return render();
+    t.status = status; render(); await load(); return render();
   }
   if (el.dataset.task) { const t = tasks.find(x => x.id == el.dataset.task); if (canManage(t.team) || canJoin(t.team)) openTask(t.id); }
 });
